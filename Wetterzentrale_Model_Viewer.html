@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wetterzentrale Run-to-Run Model Viewer v8</title>
+<style>
+:root{
+  --bg:#071018;--panel:#0d1822;--panel2:#132330;--line:#294052;
+  --text:#eef5fa;--muted:#91a8ba;--accent:#68c6ff;--ok:#74d7a5;
+  --warn:#ffd166;--bad:#ff7373
+}
+*{box-sizing:border-box}html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:Segoe UI,Arial,sans-serif}
+body{overflow:hidden}button,select,input{font:inherit;color:var(--text);background:#142431;border:1px solid #355066;border-radius:7px;padding:6px 9px}
+button{cursor:pointer}button:hover{background:#1d3343}.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+#app{height:100%;display:grid;grid-template-rows:auto 1fr auto}
+header{background:#0c151e;border-bottom:1px solid var(--line);padding:8px 11px;display:flex;gap:14px;align-items:center;min-height:64px}
+.brand{min-width:280px}.brand h1{font-size:18px;margin:0}.brand .sub{font-size:11px;color:var(--muted);margin-top:2px}
+.toolbar{display:flex;flex-wrap:wrap;gap:7px;align-items:center;flex:1}.group{display:flex;align-items:center;gap:5px;border-left:1px solid #243947;padding-left:8px}.group:first-child{border:0;padding-left:0}
+.label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#84a1b6}.small{font-size:12px;padding:5px 7px}
+.status{font-size:11px;color:var(--muted);min-width:190px;text-align:right}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warn);margin-right:5px}.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}
+main{position:relative;min-height:0;background:#020609;overflow:hidden}
+#singleView{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#singleStage{position:absolute;left:0;top:0;transform-origin:center center;will-change:transform}
+#singleImg{display:block;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;pointer-events:none}
+
+
+
+
+
+.overlay{position:absolute;z-index:5;background:rgba(3,9,14,.80);border:1px solid #284355;border-radius:7px;padding:6px 8px;pointer-events:none}
+.topLeft{left:9px;top:9px}.topRight{right:9px;top:9px;text-align:right}.bottomRight{right:9px;bottom:9px;text-align:right}
+.big{font-size:14px;font-weight:700}.tiny{font-size:10px;color:var(--muted);margin-top:2px}.valid{font-size:18px;font-weight:800}.warn{color:var(--warn)}
+#empty{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;color:#aec1d0}
+#empty .box{max-width:580px}.emptyTitle{font-size:22px;font-weight:700;margin-bottom:8px}.emptyText{font-size:13px;line-height:1.5;color:#8ea6b8}
+footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:6px 10px}
+.controls{display:flex;gap:5px}.controls button{min-width:38px}.runBar{display:flex;align-items:center;gap:6px;justify-content:center}
+.runBtn{min-width:112px;text-align:center}.runBtn .r1{font-weight:700;font-size:12px}.runBtn .r2{font-size:10px;color:var(--muted);margin-top:2px}
+.help{font-size:10px;color:var(--muted);text-align:right}
+#drawer{position:fixed;right:-430px;top:0;bottom:0;width:420px;background:#0d1822;border-left:1px solid #2c4557;z-index:20;padding:14px;overflow:auto;transition:right .18s ease}
+#drawer.open{right:0}#drawer h2{margin:0 0 10px;font-size:18px}#drawer h3{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:#8db3cd;margin:18px 0 8px}
+.note{font-size:12px;line-height:1.5;color:#a3b6c5;background:#101f2a;border:1px solid #294052;border-radius:7px;padding:9px}
+.formRow{display:grid;grid-template-columns:150px 1fr;gap:9px;align-items:center;margin:7px 0}.formRow label{font-size:12px;color:#a7bac8}
+.diag{white-space:pre-wrap;font:11px Consolas,monospace;background:#050a0e;border:1px solid #263b4a;padding:8px;border-radius:7px;color:#9cb0bf}
+#toast{position:fixed;left:50%;bottom:70px;transform:translateX(-50%) translateY(15px);opacity:0;transition:.15s;background:#142634;border:1px solid #35536a;border-radius:7px;padding:8px 11px;font-size:12px;z-index:30}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <div class="brand">
+    <h1>Wetterzentrale • Run-to-Run Viewer</h1>
+    <div class="sub">Run-to-run model cycles • exact valid-time matching where available • Europe • v8</div>
+  </div>
+  <div class="toolbar">
+    <div class="group"><span class="label">Mode</span><select id="compareMode">
+      <option value="history" selected>One model • previous runs</option>
+      <option value="allmodels">All models • same valid time</option>
+    </select></div>
+    <div class="group" id="modelGroup"><span class="label">Model</span><select id="model">
+      <option value="gfs" selected>GFS</option>
+      <option value="gfsens">GFS ENS</option>
+      <option value="ecm">ECMWF</option>
+      <option value="ecmens">EC ENS</option>
+      <option value="gem">GEM</option>
+      <option value="icon">ICON</option>
+      <option value="ukmo">UKMO EU</option>
+    </select></div>
+    <div class="group"><span class="label">Variable</span><select id="variable">
+      <option value="1" selected>500 hPa height + MSLP</option>
+      <option value="2">850 hPa temperature</option>
+    </select></div>
+    <div class="group"><span class="label">Reference run</span><select id="refRun"></select></div>
+    <div class="group"><span class="label">Reference T+</span><select id="lead" style="width:82px"></select><span style="font-size:11px;color:var(--muted)">h</span></div>
+    <div class="group" id="ageGroup" style="display:none"><span class="label">Run age</span><select id="runAge">
+      <option value="0">Reference cycle</option>
+      <option value="12">12 h older</option>
+      <option value="24">24 h older</option>
+      <option value="36">36 h older</option>
+      <option value="48">48 h older</option>
+    </select></div>
+    <div class="group"><span class="label">Speed</span><select id="speed"><option value="1500">Slow</option><option value="900" selected>Normal</option><option value="500">Fast</option><option value="260">Very fast</option></select></div>
+    <div class="group"><button id="refresh" class="small">↻ Reload</button><button id="openWz" class="small">↗ Wetterzentrale</button><button id="settings" class="small">⚙ Info</button><button id="fullscreen" class="small">⛶ Full screen</button></div>
+  </div>
+  <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Initialising…</span></div>
+</header>
+
+<main id="viewer">
+  <div id="singleView">
+    <div id="singleStage"><img id="singleImg" alt="Wetterzentrale model chart"></div>
+    <div class="overlay topLeft"><div class="big" id="modelLabel">GFS</div><div class="tiny" id="varLabel">500 hPa height + MSLP</div></div>
+    <div class="overlay topRight"><div class="valid" id="runLabel">00Z • T+96</div><div class="tiny" id="sameValid">Reference valid time</div></div>
+    <div class="overlay bottomRight"><div id="frameLabel">Run 1 / 4</div><div class="tiny" id="imageUrlLabel"></div></div>
+  </div>
+  <div id="empty"><div class="box"><div class="emptyTitle">No usable maps found</div><div class="emptyText">The requested forecast hour may not be generated by Wetterzentrale for this model/run combination.</div></div></div>
+</main>
+
+<footer>
+  <div class="controls"><button id="prev">◀</button><button id="play">▶</button><button id="next">▶</button></div>
+  <div class="runBar" id="runBar"></div>
+  <div class="help">sequence: oldest → newest • history: oldest → newest • all-model: ECMWF → EC ENS → GFS → GFS ENS → UKMO EU → GEM → ICON • wheel = zoom • drag = pan • 0 = reset • Space = play/pause • ←/→ = run</div>
+</footer>
+</div>
+
+<aside id="drawer">
+  <h2>How this viewer works</h2>
+  <div class="note">
+    Wetterzentrale's current chart PNG filenames encode the model, run cycle, forecast lead and variable. This version is deliberately animation-only so run-to-run changes remain spatially aligned.
+    For models with the required forecast steps, this viewer keeps the <b>valid time mathematically fixed</b> by increasing the forecast lead as you step back through earlier run cycles. <b>EC ENS is the exception:</b> Wetterzentrale exposes its ensemble-mean charts at 24-hour forecast steps, so 00Z/12Z EC ENS history is compared at the same T+ lead.
+  </div>
+  <h3>Example</h3>
+  <div class="diag">06Z T+114 → 18 h older run
+12Z T+108 → 12 h older run
+18Z T+102 → 6 h older run
+00Z T+96  → newest/reference run
+
+Animation always progresses oldest → newest.</div>
+  <h3>Important Wetterzentrale limitation</h3>
+  <div class="note">
+    These direct chart URLs represent Wetterzentrale's current stored run slots, not an unlimited archive. The viewer treats ECMWF and EC ENS as 00/12 only because Wetterzentrale's 06/18 ECMWF PNG slots can contain stale old charts.
+    Therefore GFS, GFS ENS and ICON can use 00/06/12/18 cycle slots, while GEM, ECMWF, EC ENS and UKMO EU are primarily 00/12 comparisons. EC ENS mean output is 24-hourly (T+0, 24, 48 … 240), so its 00Z/12Z history uses the same forecast lead instead of requesting unavailable 12-hour-offset leads. Other models continue to use exact same-valid-time matching where the required forecast hour exists.
+  </div>
+  <h3>All-model comparison</h3>
+  <div class="note">
+    Switch Mode to <b>All models • same valid time</b>. Choose a reference 00Z/12Z cycle, T+ lead and a run age (reference, 12 h older, 24 h older, etc.). The viewer then cycles ECMWF, EC ENS, GFS, GFS ENS, UKMO EU, GEM and ICON maps from the same initialisation cycle and exactly the same valid time. Models that do not supply that lead/variable are skipped.
+  </div>
+  <h3>Models in v8</h3>
+  <div class="diag">ECMWF: ECMOPEU{run}_{lead}_{var}.png (OP; 00/12)
+EC ENS: ECMAVGEU{run}_{lead}_{var}.png (AVG; 00/12; 24-hour forecast steps)
+GFS:   GFSOPEU{run}_{lead}_{var}.png (OP; 00/06/12/18)
+GFS ENS: GFSAVGEU{run}_{lead}_{var}.png (AVG; 00/06/12/18)
+GEM:   GEMOPEU{run}_{lead}_{var}.png
+ICON:  ICOOPEU{run}_{lead}_{var}.png
+UKMO EU: UKMHDOPEU{run}_{lead}_{var}.png</div>
+  <h3>Display</h3>
+  <div class="formRow"><label>Animation mode</label><select id="animMode"><option value="forward" selected>Forward then restart</option><option value="rock">Rock back and forth</option></select></div>
+  <div class="formRow"><label>Latest-frame hold</label><select id="hold"><option value="0">0 s</option><option value="750" selected>0.75 s</option><option value="1500">1.5 s</option><option value="2500">2.5 s</option></select></div>
+  <div style="display:flex;gap:7px;margin-top:14px"><button id="closeDrawer">Close</button></div>
+</aside>
+<div id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+const $=id=>document.getElementById(id);
+const e={};
+['compareMode','modelGroup','ageGroup','runAge','model','variable','refRun','lead','speed','refresh','openWz','settings','fullscreen',
+'statusDot','statusText','singleView','singleStage','singleImg','modelLabel','varLabel','runLabel','sameValid',
+'frameLabel','imageUrlLabel','empty','prev','play','next','runBar','viewer','drawer','animMode','hold',
+'closeDrawer','toast'].forEach(id=>e[id]=$(id));
+
+const MODEL_ORDER=['ecm','ecmens','gfs','gfsens','ukmo','gem','icon'];
+const MODELS={
+ gfs:{name:'GFS',prefix:'GFSOPEU',cycles:[0,6,12,18],max:384,vars:[1,2],page:'gfs',lid:'OP',tr:6},
+ gfsens:{name:'GFS ENS',prefix:'GFSAVGEU',cycles:[0,6,12,18],max:384,vars:[1,2],page:'gfs',lid:'AVG',tr:24},
+ ecm:{name:'ECMWF',prefix:'ECMOPEU',cycles:[0,12],max:360,vars:[1,2],page:'ecm',lid:'OP',tr:6},
+ ecmens:{name:'EC ENS',prefix:'ECMAVGEU',cycles:[0,12],max:240,vars:[1,2],page:'ecm',lid:'AVG',tr:24,leadStep:24,historySameLead:true},
+ gem:{name:'GEM',prefix:'GEMOPEU',cycles:[0,12],max:240,vars:[1,2],page:'gem',lid:'OP',tr:6},
+ icon:{name:'ICON',prefix:'ICOOPEU',cycles:[0,6,12,18],max:180,vars:[1,2],page:'ico',lid:'OP',tr:6},
+ ukmo:{name:'UKMO EU',prefix:'UKMHDOPEU',cycles:[0,12],max:168,vars:[1,2],page:'ukmhd',lid:'OP',tr:6}
+};
+const VARS={1:'500 hPa height + MSLP',2:'850 hPa temperature'};
+const REFERENCE_LEADS=[0,6,12,18,24,36,48,60,72,84,96,120,132,144,168,192,216,240];
+const EC_ENS_LEADS=[0,24,48,72,96,120,144,168,192,216,240];
+const BASE='https://wetterzentrale.de/maps/';
+const state={frames:[],idx:0,playing:false,timer:null,dir:1,zoom:1,panX:0,panY:0,baseW:0,baseH:0,drag:false,start:null,generation:0};
+
+function padRun(n){return String(n).padStart(2,'0')}
+function padLead(n){return n<10?String(n).padStart(2,'0'):String(n)}
+function toast(t){e.toast.textContent=t;e.toast.classList.add('show');setTimeout(()=>e.toast.classList.remove('show'),2200)}
+function status(t,type='warn'){e.statusText.textContent=t;e.statusDot.className='dot '+(type==='ok'?'ok':type==='bad'?'bad':'')}
+function imageUrl(model,run,lead,v){return `${BASE}${model.prefix}${padRun(run)}_${lead}_${v}.png`}
+function cycleAge(ref,run){
+  let d=ref-run;if(d<0)d+=24;return d
+}
+function orderedRuns(model,ref){
+  return model.cycles.map(r=>({run:r,age:cycleAge(ref,r)})).sort((a,b)=>b.age-a.age)
+}
+function buildHistoryFrames(){
+  stop();resetZoom();
+  const m=MODELS[e.model.value],ref=+e.refRun.value,baseLead=+e.lead.value,v=+e.variable.value;
+  if(!m.vars.includes(v)){
+    e.variable.value='1';toast(`${m.name} does not offer that variable here; switched to 500 hPa + MSLP`);
+  }
+  const vv=+e.variable.value;
+  state.frames=orderedRuns(m,ref).map((x,i)=>{
+    // EC ENS mean charts on Wetterzentrale are available at 24-hour forecast steps only.
+    // For its 00Z/12Z run-to-run history, use the same forecast lead for both cycles
+    // rather than requesting a non-existent 12-hour-offset lead (e.g. T+228).
+    // EC ENS is a deliberate exception: Wetterzentrale's mean charts use
+    // 24-hour forecast leads, so the previous 12Z cycle must stay at the
+    // selected T+ (e.g. 00Z T+216 -> previous 12Z T+216), not T+228.
+    const sameLead=(e.model.value==='ecmens') || !!m.historySameLead;
+    const lead=sameLead ? baseLead : baseLead+x.age;
+    return {run:x.run,age:x.age,lead,sameValid:!sameLead||x.age===0,sameLead,
+      url:imageUrl(m,x.run,lead,vv),ok:null,index:i}
+  }).filter(f=>f.lead>=0 && f.lead<=m.max && (!m.leadStep || f.lead%m.leadStep===0));
+  state.idx=0;state.generation++;
+  renderRunBar();
+  e.modelLabel.textContent=m.name;e.varLabel.textContent=VARS[vv];
+  status(m.historySameLead?`Checking ${state.frames.length} EC ENS same-lead run slots…`:`Checking ${state.frames.length} exact-valid run slots…`);
+  if(!state.frames.length){showEmpty();return}
+  checkFrames(state.generation);
+}
+
+function previousCycle(run,age){
+  let total=run-age;
+  while(total<0) total+=24;
+  return ((total%24)+24)%24
+}
+function allModelFrames(){
+  stop();
+  const ref=+e.refRun.value,baseLead=+e.lead.value,v=+e.variable.value,age=+e.runAge.value;
+  const targetRun=previousCycle(ref,age);
+  state.frames=[];
+  for(const key of MODEL_ORDER){
+    const m=MODELS[key];
+    if(!m.vars.includes(v)) continue;
+    // Only use genuine operational cycles for that model.
+    if(!m.cycles.includes(targetRun)) continue;
+    const lead=baseLead+age;
+    if(lead<0 || lead>m.max) continue;
+    // Ensemble-mean EC charts are 24-hourly; do not request intermediate leads.
+    if(m.leadStep && lead%m.leadStep!==0) continue;
+    state.frames.push({
+      key,model:m.name,run:targetRun,age,lead,
+      url:imageUrl(m,targetRun,lead,v),ok:null,index:state.frames.length
+    });
+  }
+  state.idx=0;state.generation++;
+  renderRunBar();
+  e.modelLabel.textContent='All models';
+  e.varLabel.textContent=VARS[v];
+  status(`Checking ${state.frames.length} models for the exact same valid time…`);
+  if(!state.frames.length){showEmpty();return}
+  checkFrames(state.generation);
+}
+
+function buildFrames(){
+  if(e.compareMode.value==='allmodels') allModelFrames();
+  else buildHistoryFrames();
+}
+function checkFrames(gen){
+  let done=0,good=0;
+  state.frames.forEach((f,i)=>{
+    const im=new Image();
+    im.onload=()=>{
+      if(gen!==state.generation)return;
+      f.ok=im.naturalWidth>200&&im.naturalHeight>150;done++;if(f.ok)good++;
+      updateAfterCheck(done,good);
+    };
+    im.onerror=()=>{if(gen!==state.generation)return;f.ok=false;done++;updateAfterCheck(done,good)};
+    im.src=f.url+'?v='+Date.now();
+  });
+}
+function updateAfterCheck(done,good){
+  renderRunBar();
+  if(good && !state.frames[state.idx]?.ok){
+    const first=state.frames.findIndex(f=>f.ok);if(first>=0)state.idx=first;
+  }
+  if(good){e.empty.style.display='none';showFrame(state.idx)}
+  if(done===state.frames.length){
+    if(!good){showEmpty();status('No usable maps available','bad')}
+    else {status(`${good} run${good===1?'':'s'} available • ready to play`,'ok')}
+  }else status(`${good} available • ${done}/${state.frames.length} checked`);
+}
+function showEmpty(){e.empty.style.display='flex';e.singleImg.removeAttribute('src')}
+function usable(){return state.frames.map((f,i)=>f.ok?i:-1).filter(i=>i>=0)}
+function showFrame(i){
+  if(!state.frames.length)return;
+  let j=Math.max(0,Math.min(i,state.frames.length-1));
+  if(state.frames[j].ok===false){
+    const u=usable();if(!u.length)return;
+    j=u.reduce((best,k)=>Math.abs(k-j)<Math.abs(best-j)?k:best,u[0]);
+  }
+  state.idx=j;const f=state.frames[j],m=MODELS[e.model.value];
+  if(f.ok!==false)e.singleImg.src=f.url;
+  e.runLabel.textContent=`${padRun(f.run)}Z • T+${padLead(f.lead)}`;
+  if(f.sameLead && f.age>0){
+    e.sameValid.textContent=`${f.age} h older cycle • same forecast lead (valid time ${f.age} h earlier)`;
+  } else {
+    e.sameValid.textContent=f.age===0?'Newest / reference run':`${f.age} h older cycle • exact same valid time`;
+  }
+  e.frameLabel.textContent=`Run ${usable().indexOf(j)+1} / ${usable().length||state.frames.length}`;
+  e.imageUrlLabel.textContent=f.url.split('/').pop();
+  [...e.runBar.children].forEach((b,k)=>b.classList.toggle('active',k===j));
+}
+function renderRunBar(){
+  e.runBar.innerHTML='';
+  state.frames.forEach((f,i)=>{
+    const b=document.createElement('button');b.className='runBtn';
+    let stateTxt=f.ok===true?'ready':f.ok===false?'unavailable':'checking…';
+    if(e.compareMode.value==='allmodels'){
+      b.innerHTML=`<div class="r1">${f.model}</div><div class="r2">${padRun(f.run)}Z • T+${padLead(f.lead)} • ${stateTxt}</div>`;
+    } else {
+      const relation=f.sameLead&&f.age?'same T+':'exact valid';
+      b.innerHTML=`<div class="r1">${padRun(f.run)}Z • T+${padLead(f.lead)}</div><div class="r2">${f.age?'-'+f.age+' h run':'reference'} • ${relation} • ${stateTxt}</div>`;
+    }
+    b.onclick=()=>{stop();showFrame(i)};e.runBar.appendChild(b)
+  })
+}
+function step(delta){
+  const u=usable();if(!u.length)return;
+  let p=u.indexOf(state.idx);if(p<0)p=0;
+  p=(p+delta+u.length)%u.length;showFrame(u[p])
+}
+function play(){
+  const u=usable();if(state.playing||u.length<2)return;
+  if(state.idx===u[u.length-1]) showFrame(u[0]);
+  state.playing=true;e.play.textContent='❚❚';schedule(+e.speed.value)
+}
+function stop(){state.playing=false;clearTimeout(state.timer);state.timer=null;e.play.textContent='▶'}
+function schedule(ms){clearTimeout(state.timer);if(state.playing)state.timer=setTimeout(tick,ms)}
+function tick(){
+  const u=usable();if(!state.playing||u.length<2)return;
+  const pos=u.indexOf(state.idx),rock=e.animMode.value==='rock';let hold=0,newPos=pos;
+  if(rock){
+    if(pos>=u.length-1){state.dir=-1;hold=+e.hold.value}
+    else if(pos<=0)state.dir=1;
+    newPos=pos+state.dir
+  }else{
+    newPos=(pos+1)%u.length;
+    if(pos===u.length-1)hold=+e.hold.value
+  }
+  showFrame(u[newPos]);schedule(+e.speed.value+hold)
+}
+function populateLeadOptions(){
+  const current=+e.lead.value || 96;
+  const leads=(e.compareMode.value==='history' && e.model.value==='ecmens')?EC_ENS_LEADS:REFERENCE_LEADS;
+  e.lead.innerHTML=leads.map(h=>`<option value="${h}">${padLead(h)}</option>`).join('');
+  e.lead.value=leads.includes(current)?String(current):(leads.includes(96)?'96':String(leads[0]));
+}
+function populateRuns(){
+  const m=MODELS[e.model.value],old=+e.refRun.value;
+  e.refRun.innerHTML=m.cycles.map(r=>`<option value="${r}">${padRun(r)}Z</option>`).join('');
+  e.refRun.value=m.cycles.includes(old)?String(old):String(m.cycles[0]);
+  [...e.variable.options].forEach(o=>o.disabled=!m.vars.includes(+o.value));
+  if(!m.vars.includes(+e.variable.value))e.variable.value='1'
+}
+function openWz(){
+  const f=state.frames[state.idx]||state.frames[0],v=e.variable.value;
+  if(!f)return;
+  const m=e.compareMode.value==='allmodels'?MODELS[f.key]:MODELS[e.model.value];
+  const url=`https://wetterzentrale.de/en/topkarten.php?map=1&model=${m.page}&var=${v}&time=${f.lead}&run=${padRun(f.run)}&lid=${m.lid||'OP'}&h=0&tr=${m.tr||6}&mv=0#mapref`;
+  window.open(url,'_blank','noopener')
+}
+
+/* zoom / pan */
+function fit(){
+  if(!e.singleImg.naturalWidth)return;
+  const vw=e.singleView.clientWidth,vh=e.singleView.clientHeight,ar=e.singleImg.naturalWidth/e.singleImg.naturalHeight;
+  let w=vw,h=w/ar;if(h>vh){h=vh;w=h*ar}
+  state.baseW=w;state.baseH=h;e.singleStage.style.width=w+'px';e.singleStage.style.height=h+'px';applyTransform()
+}
+function applyTransform(){
+  const vw=e.singleView.clientWidth,vh=e.singleView.clientHeight;
+  e.singleStage.style.transform=`translate(${(vw-state.baseW)/2+state.panX}px,${(vh-state.baseH)/2+state.panY}px) scale(${state.zoom})`
+}
+function resetZoom(){state.zoom=1;state.panX=0;state.panY=0;applyTransform()}
+e.singleImg.addEventListener('load',fit);window.addEventListener('resize',fit);
+e.singleView.addEventListener('wheel',ev=>{ev.preventDefault();state.zoom=Math.max(1,Math.min(5,state.zoom*(ev.deltaY<0?1.15:1/1.15)));if(state.zoom===1){state.panX=state.panY=0}applyTransform()},{passive:false});
+e.singleView.addEventListener('pointerdown',ev=>{if(state.zoom<=1||ev.button!==0)return;state.drag=true;state.start={x:ev.clientX,y:ev.clientY,px:state.panX,py:state.panY};e.singleView.setPointerCapture(ev.pointerId)});
+e.singleView.addEventListener('pointermove',ev=>{if(!state.drag)return;state.panX=state.start.px+ev.clientX-state.start.x;state.panY=state.start.py+ev.clientY-state.start.y;applyTransform()});
+e.singleView.addEventListener('pointerup',()=>state.drag=false);e.singleView.addEventListener('pointercancel',()=>state.drag=false);e.singleView.addEventListener('dblclick',resetZoom);
+
+
+function updateModeUI(){
+  const all=e.compareMode.value==='allmodels';
+  e.modelGroup.style.display=all?'none':'flex';
+  e.ageGroup.style.display=all?'flex':'none';
+  // Common denominator across the main global models is 00/12.
+  if(all){
+    const current=+e.refRun.value;
+    e.refRun.innerHTML='<option value="0">00Z</option><option value="12">12Z</option>';
+    e.refRun.value=(current===12)?'12':'0';
+  } else {
+    populateRuns();
+  }
+}
+
+/* controls */
+e.compareMode.onchange=()=>{updateModeUI();populateLeadOptions();buildFrames()};
+e.runAge.onchange=buildFrames;
+e.model.onchange=()=>{populateRuns();populateLeadOptions();buildFrames()};
+e.variable.onchange=buildFrames;e.refRun.onchange=buildFrames;e.lead.onchange=buildFrames;
+e.refresh.onclick=buildFrames;e.openWz.onclick=openWz;
+e.prev.onclick=()=>{stop();step(-1)};e.next.onclick=()=>{stop();step(1)};e.play.onclick=()=>state.playing?stop():play();
+e.settings.onclick=()=>e.drawer.classList.add('open');e.closeDrawer.onclick=()=>e.drawer.classList.remove('open');
+e.fullscreen.onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
+document.addEventListener('keydown',ev=>{
+  if(['INPUT','SELECT'].includes(document.activeElement.tagName))return;
+  if(ev.code==='Space'){ev.preventDefault();state.playing?stop():play()}
+  else if(ev.key==='ArrowLeft'){stop();step(-1)}
+  else if(ev.key==='ArrowRight'){stop();step(1)}
+  else if(ev.key==='0')resetZoom()
+});
+populateLeadOptions();updateModeUI();buildFrames();
+})();
+</script>
+</body>
+</html>
