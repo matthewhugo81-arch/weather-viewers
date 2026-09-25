@@ -80,7 +80,7 @@ footer{background:#0e151d;border-top:1px solid var(--line);padding:7px 12px;disp
 
 <aside id="drawer">
   <h2>Viewer settings</h2>
-  <div class="settingsNote"><b>v5:</b> Meteociel remains the primary source, but the working EUMETView products have been added back in as optional extras. The viewer constructs individual Meteosat-12 archive-image URLs at 10-minute intervals and can work back through 24 hours. Missing daylight/night-only frames are simply skipped.</div>
+  <div class="settingsNote"><b>v5:</b> Meteociel remains the primary source, but the working EUMETView products have been added back in as optional extras. The viewer constructs individual Meteosat-12 archive-image URLs at 10-minute intervals and can work back through 24 hours. Missing daylight/night-only frames are simply skipped. Refreshes re-check previously missing frames, and animation begins only after the selected archive window has been fully scanned.</div>
 
   <h3>Meteociel archive</h3>
   <div class="formRow"><label>Latest-frame lag</label><select id="lag"><option value="10">10 min</option><option value="20" selected>20 min</option><option value="30">30 min</option><option value="40">40 min</option></select></div>
@@ -202,6 +202,20 @@ function testImage(url,timeout=9000){
   })
 }
 
+function clearNegativeUrlCache(){
+  let cleared=0;
+  for(const [url,ok] of state.urlStatus){
+    if(ok===false){state.urlStatus.delete(url);cleared++}
+  }
+  return cleared
+}
+
+function refreshProduct(reason='manual'){
+  const cleared=clearNegativeUrlCache();
+  if(reason==='manual') toast(cleared ? 'Refresh: rechecking '+cleared+' previously missing frame'+(cleared===1?'':'s') : 'Refreshing latest imagery…');
+  loadProduct();
+}
+
 function probeTimes(product){
   const s=settings(), now=new Date(), base=round10(new Date(Date.now()-s.lag*60000));
   const arr=[];
@@ -312,17 +326,18 @@ async function loadProgressive(gen){
       f.ok=await testImage(f.url,12000);
       checked++;if(f.ok)good++;
       e.progressFill.style.width=(checked/total*100).toFixed(1)+'%';
-      e.loadCounter.textContent=`${good} usable • ${checked}/${total} checked`;
-      // Make the viewer usable quickly, then periodically extend the timeline backwards.
+      e.loadCounter.textContent=`${good} usable • ${checked}/${total} checked • loading archive`;
+      // Show the newest usable frame quickly, but do not begin animation until
+      // the complete requested archive window has been checked. This prevents
+      // a 12/24-hour selection looking like a completed short loop.
       if((f.ok && good<=6) || checked%8===0 || checked===total){
         const had=state.frames.length;
         rebuildTimeline(true);
         if(state.frames.length && !started){
           started=true;unempty();showFrame(state.frames.length-1);
-          status(`${state.frames.length} frames ready • older frames loading…`,'ok');
-          if(state.frames.length>=2) play();
+          status(`${state.frames.length} recent frame${state.frames.length===1?'':'s'} ready • loading older archive…`,'ok');
         } else if(started && state.frames.length!==had){
-          status(`${state.frames.length} usable frames • archive still loading…`,'ok');
+          status(`${state.frames.length} frames ready • ${Math.max(0,total-checked)} candidates still checking…`,'ok');
         }
       }
     }
@@ -334,8 +349,9 @@ async function loadProgressive(gen){
     stop();status('No archive frames found','bad');
     empty('No imagery returned',`The selected product could not be loaded for this period. If this is a daylight/night-only product, try a 24-hour loop. You can also use Settings → Re-probe product.`);
   } else {
-    status(`${state.frames.length} usable frames loaded`,'ok');
-    e.loadCounter.textContent=`${state.frames.length} usable • complete`;
+    status(`${state.frames.length} usable frames loaded • ${e.hours.value}h archive complete`,'ok');
+    e.loadCounter.textContent=`${state.frames.length} usable • ${e.hours.value}h archive complete`;
+    if(state.frames.length>=2) play();
   }
 }
 
@@ -462,7 +478,7 @@ e.prev.onclick=()=>{stop();showFrame(state.index-1)};e.next.onclick=()=>{stop();
 e.first.onclick=()=>{stop();showFrame(0)};e.last.onclick=()=>{stop();showFrame(state.frames.length-1)};
 e.modeForward.onclick=()=>setMode('forward');e.modeRock.onclick=()=>setMode('rock');e.modeReverse.onclick=()=>setMode('reverse');
 e.speed.onchange=()=>{save();if(state.playing)schedule(+e.speed.value)};
-e.product.onchange=loadProduct;e.hours.onchange=loadProduct;e.refresh.onclick=loadProduct;e.openSource.onclick=sourceOpen;
+e.product.onchange=loadProduct;e.hours.onchange=loadProduct;e.refresh.onclick=()=>refreshProduct('manual');e.openSource.onclick=sourceOpen;
 e.settings.onclick=()=>e.drawer.classList.add('open');e.closeDrawer.onclick=()=>e.drawer.classList.remove('open');
 e.apply.onclick=()=>{e.drawer.classList.remove('open');loadProduct()};
 e.clearPrefix.onclick=()=>{const k=e.product.value;if(PRODUCTS[k]?.known){toast('This product uses a verified prefix');return}delete state.prefixCache[k];state.urlStatus.clear();toast('Prefix cache cleared');loadProduct()};
@@ -471,7 +487,9 @@ e.fullscreen.onclick=()=>document.fullscreenElement?document.exitFullscreen():do
 
 function setupRefresh(){
   clearInterval(state.autoTimer);
-  if(e.autoRefresh.value==='on')state.autoTimer=setInterval(()=>{if(!document.hidden)loadProduct()},10*60*1000)
+  if(e.autoRefresh.value==='on')state.autoTimer=setInterval(()=>{
+    if(!document.hidden) refreshProduct('auto')
+  },10*60*1000)
 }
 document.addEventListener('keydown',ev=>{
   if(['INPUT','SELECT'].includes(document.activeElement.tagName))return;
