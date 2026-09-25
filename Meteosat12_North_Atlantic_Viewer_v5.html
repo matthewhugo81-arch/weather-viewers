@@ -321,7 +321,8 @@ async function loadProgressive(gen){
   state.loading=true;
   let checked=0,good=0;
   const total=state.planned.length;
-  // Check the newest candidate frames first, then progressively work backwards.
+
+  // Check newest frames first, then progressively work backwards.
   const idxs=[...Array(total).keys()].reverse();
   let cursor=0;
   const conc=Math.max(1,settings().concurrency);
@@ -331,16 +332,19 @@ async function loadProgressive(gen){
     while(cursor<idxs.length && gen===state.generation){
       const i=idxs[cursor++], f=state.planned[i];
       f.ok=await testImage(f.url,12000);
-      checked++;if(f.ok)good++;
+      checked++;
+      if(f.ok) good++;
+
       e.progressFill.style.width=(checked/total*100).toFixed(1)+'%';
       e.loadCounter.textContent=`${good} usable • ${checked}/${total} checked • loading archive`;
 
-      // Show recent imagery quickly, but do not start the animation until the
-      // complete requested archive window has been checked. This prevents a
-      // 12/24-hour selection looking like a completed short loop.
+      // Show recent imagery quickly, but do not start animation until the
+      // entire requested archive window has been checked. This prevents a
+      // 12h/24h selection appearing to be a completed short loop.
       if((f.ok && good<=6) || checked%8===0 || checked===total){
         const had=state.frames.length;
         rebuildTimeline(true);
+
         if(state.frames.length && !started){
           started=true;
           unempty();
@@ -366,6 +370,8 @@ async function loadProgressive(gen){
   } else {
     status(`${state.frames.length} usable frames loaded • ${e.hours.value}h archive complete`,'ok');
     e.loadCounter.textContent=`${state.frames.length} usable • ${e.hours.value}h archive complete`;
+
+    // Start animation only when the complete selected archive has been checked.
     if(state.frames.length>=2) play();
   }
 }
