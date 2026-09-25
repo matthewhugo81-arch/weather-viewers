@@ -205,14 +205,21 @@ function testImage(url,timeout=9000){
 function clearNegativeUrlCache(){
   let cleared=0;
   for(const [url,ok] of state.urlStatus){
-    if(ok===false){state.urlStatus.delete(url);cleared++}
+    if(ok===false){
+      state.urlStatus.delete(url);
+      cleared++;
+    }
   }
   return cleared
 }
 
 function refreshProduct(reason='manual'){
   const cleared=clearNegativeUrlCache();
-  if(reason==='manual') toast(cleared ? 'Refresh: rechecking '+cleared+' previously missing frame'+(cleared===1?'':'s') : 'Refreshing latest imagery…');
+  if(reason==='manual'){
+    toast(cleared
+      ? `Refresh: rechecking ${cleared} previously missing frame${cleared===1?'':'s'}`
+      : 'Refreshing latest imagery…');
+  }
   loadProduct();
 }
 
@@ -314,7 +321,7 @@ async function loadProgressive(gen){
   state.loading=true;
   let checked=0,good=0;
   const total=state.planned.length;
-  // Recent frames first: last ~18, then work backwards through older frames.
+  // Check the newest candidate frames first, then progressively work backwards.
   const idxs=[...Array(total).keys()].reverse();
   let cursor=0;
   const conc=Math.max(1,settings().concurrency);
@@ -327,14 +334,17 @@ async function loadProgressive(gen){
       checked++;if(f.ok)good++;
       e.progressFill.style.width=(checked/total*100).toFixed(1)+'%';
       e.loadCounter.textContent=`${good} usable • ${checked}/${total} checked • loading archive`;
-      // Show the newest usable frame quickly, but do not begin animation until
-      // the complete requested archive window has been checked. This prevents
-      // a 12/24-hour selection looking like a completed short loop.
+
+      // Show recent imagery quickly, but do not start the animation until the
+      // complete requested archive window has been checked. This prevents a
+      // 12/24-hour selection looking like a completed short loop.
       if((f.ok && good<=6) || checked%8===0 || checked===total){
         const had=state.frames.length;
         rebuildTimeline(true);
         if(state.frames.length && !started){
-          started=true;unempty();showFrame(state.frames.length-1);
+          started=true;
+          unempty();
+          showFrame(state.frames.length-1);
           status(`${state.frames.length} recent frame${state.frames.length===1?'':'s'} ready • loading older archive…`,'ok');
         } else if(started && state.frames.length!==had){
           status(`${state.frames.length} frames ready • ${Math.max(0,total-checked)} candidates still checking…`,'ok');
@@ -342,11 +352,16 @@ async function loadProgressive(gen){
       }
     }
   }
+
   await Promise.all(Array.from({length:conc},worker));
   if(gen!==state.generation)return;
-  state.loading=false;rebuildTimeline(true);
+
+  state.loading=false;
+  rebuildTimeline(true);
+
   if(!state.frames.length){
-    stop();status('No archive frames found','bad');
+    stop();
+    status('No archive frames found','bad');
     empty('No imagery returned',`The selected product could not be loaded for this period. If this is a daylight/night-only product, try a 24-hour loop. You can also use Settings → Re-probe product.`);
   } else {
     status(`${state.frames.length} usable frames loaded • ${e.hours.value}h archive complete`,'ok');
@@ -487,9 +502,11 @@ e.fullscreen.onclick=()=>document.fullscreenElement?document.exitFullscreen():do
 
 function setupRefresh(){
   clearInterval(state.autoTimer);
-  if(e.autoRefresh.value==='on')state.autoTimer=setInterval(()=>{
-    if(!document.hidden) refreshProduct('auto')
-  },10*60*1000)
+  if(e.autoRefresh.value==='on'){
+    state.autoTimer=setInterval(()=>{
+      if(!document.hidden) refreshProduct('auto')
+    },10*60*1000)
+  }
 }
 document.addEventListener('keydown',ev=>{
   if(['INPUT','SELECT'].includes(document.activeElement.tagName))return;
