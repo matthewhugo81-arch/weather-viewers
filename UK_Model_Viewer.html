@@ -152,7 +152,7 @@ body.mosaic-mode .placeholder small{font-size:9px}
 <div class="topbar">
   <div class="header">
     <div class="title">
-      <h1 id="viewerTitle">UK Model Accumulated Precipitation Comparison Viewer</h1>
+      <h1 id="viewerTitle">UK Model Comparison Viewer</h1>
       <p id="viewerSubtitle">Synchronised Wetterzentrale operational model accumulated precipitation · United Kingdom · UTC/Z valid time</p>
     </div>
     <div class="header-right">
@@ -176,6 +176,8 @@ body.mosaic-mode .placeholder small{font-size:9px}
       <select id="paramSel" title="Model parameter">
         <option value="18" selected>Accumulated Precipitation</option>
         <option value="4">Precipitation</option>
+        <option value="10">2 m Dew Point</option>
+        <option value="7">850 hPa Pot. Equivalent Temp.</option>
         <option value="19">10 m Wind Gust</option>
         <option value="25">Total Snow Depth</option>
       </select>
@@ -230,10 +232,10 @@ body.mosaic-mode .placeholder small{font-size:9px}
 </div>
 
 <div class="content">
-  <div class="notice" id="comparisonNotice">
+  <div class="grid" id="grid"></div>
+  <div class="notice" id="comparisonNotice" style="margin-top:14px">
     <strong>Comparison note:</strong> every panel uses Wetterzentrale's <strong>Accumulated Precip.</strong> field. Values are cumulative from the model initialization time to the selected forecast lead (for example, T+24 shows the model-total precipitation accumulated from T+0 through T+24). Panels are aligned to the same valid time; a model is left unavailable when it has no native output frame at that exact hour rather than substituting a different valid time.
   </div>
-  <div class="grid" id="grid"></div>
   <div class="footer">
     Map imagery is loaded directly from <a href="https://www.wetterzentrale.de/" target="_blank" rel="noopener">Wetterzentrale</a>. Source attribution is retained on every map. Wetterzentrale states that its maps/data may be linked free of charge for non-commercial use with source attribution; commercial use requires permission.
   </div>
@@ -255,6 +257,8 @@ body.mosaic-mode .placeholder small{font-size:9px}
   const PARAMETERS = {
     18:{name:'Accumulated Precipitation', short:'Accumulated Precip.', var:18, nir:3, tr:1, unitText:'Accumulated total', notice:'Values are cumulative from the model initialization time to the selected forecast lead (for example, T+24 shows the model-total precipitation accumulated from T+0 through T+24).'},
     4:{name:'Precipitation', short:'Precipitation', var:4, nir:2, tr:3, unitText:'Precipitation', notice:'Panels show Wetterzentrale\'s precipitation field at the selected forecast lead and valid time.'},
+    10:{name:'2 m Dew Point', short:'2 m Dew Point', var:10, nir:2, tr:6, unitText:'Dew point', notice:'Panels show the model 2 m dew-point temperature field at the selected forecast lead and valid time.'},
+    7:{name:'850 hPa Pot. Equivalent Temp.', short:'850 hPa Pot. Equivalent Temp.', var:7, nir:2, tr:6, unitText:'850 hPa theta-e', notice:'Panels show the model 850 hPa potential equivalent temperature (theta-e) field at the selected forecast lead and valid time.'},
     19:{name:'10 m Wind Gust', short:'10 m Wind Gust', var:19, nir:2, tr:1, unitText:'Wind gust', notice:'Panels show the model 10 m wind-gust field at the selected forecast lead and valid time.'},
     25:{name:'Total Snow Depth', short:'Total Snow Depth', var:25, nir:2, tr:1, unitText:'Snow depth', notice:'Panels show the model total snow-depth field at the selected forecast lead and valid time.'}
   };
@@ -447,7 +451,7 @@ body.mosaic-mode .placeholder small{font-size:9px}
     const validDate = new Date(runDate.getTime()+lead*3600000);
     const p = selectedParameter();
 
-    viewerTitle.textContent = `UK Model ${p.name} Comparison Viewer`;
+    viewerTitle.textContent = 'UK Model Comparison Viewer';
     viewerSubtitle.textContent = `Synchronised Wetterzentrale operational model ${p.name.toLowerCase()} · United Kingdom · UTC/Z valid time`;
     parameterBadge.textContent = p.name;
     comparisonNotice.innerHTML = `<strong>Comparison note:</strong> every panel uses Wetterzentrale's <strong>${p.short}</strong> field. ${p.notice} Panels are aligned to the same valid time; a model is left unavailable when it has no native output frame at that exact hour rather than substituting a different valid time.`;
