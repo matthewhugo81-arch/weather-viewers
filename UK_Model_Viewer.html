@@ -150,6 +150,7 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
       <label for="paramSel" style="font-size:12px;color:var(--muted)">Parameter</label>
       <select id="paramSel" title="Model parameter">
         <option value="18" selected>Accumulated Precipitation</option>
+        <option value="4">Precipitation</option>
         <option value="19">10 m Wind Gust</option>
         <option value="25">Total Snow Depth</option>
       </select>
@@ -168,7 +169,7 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
     </div>
 
     <div class="timeline">
-      <input id="leadSlider" type="range" min="1" max="180" step="1" value="6" aria-label="Accumulated precipitation forecast lead hour" />
+      <input id="leadSlider" type="range" min="1" max="180" step="1" value="6" aria-label="Forecast lead hour" />
       <div class="lead-readout" id="leadReadout">+6h</div>
     </div>
 
@@ -212,7 +213,7 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
 <div class="lightbox" id="imageLightbox" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Enlarged model map">
   <div class="lightbox-inner">
     <button class="lightbox-close" id="lightboxClose" type="button" aria-label="Close enlarged image">×</button>
-    <img class="lightbox-img" id="lightboxImg" alt="Enlarged accumulated precipitation map" />
+    <img class="lightbox-img" id="lightboxImg" alt="Enlarged UK model map" />
     <div class="lightbox-caption" id="lightboxCaption"></div>
   </div>
 </div>
@@ -223,9 +224,10 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
 
   const BASE = 'https://wetterzentrale.de/maps/';
   const PARAMETERS = {
-    18:{name:'Accumulated Precipitation', short:'Accumulated Precip.', var:18, nir:3, unitText:'Accumulated total', notice:'Values are cumulative from the model initialization time to the selected forecast lead (for example, T+24 shows the model-total precipitation accumulated from T+0 through T+24).'},
-    19:{name:'10 m Wind Gust', short:'10 m Wind Gust', var:19, nir:2, unitText:'Wind gust', notice:'Panels show the model 10 m wind-gust field at the selected forecast lead and valid time.'},
-    25:{name:'Total Snow Depth', short:'Total Snow Depth', var:25, nir:2, unitText:'Snow depth', notice:'Panels show the model total snow-depth field at the selected forecast lead and valid time.'}
+    18:{name:'Accumulated Precipitation', short:'Accumulated Precip.', var:18, nir:3, tr:1, unitText:'Accumulated total', notice:'Values are cumulative from the model initialization time to the selected forecast lead (for example, T+24 shows the model-total precipitation accumulated from T+0 through T+24).'},
+    4:{name:'Precipitation', short:'Precipitation', var:4, nir:2, tr:3, unitText:'Precipitation', notice:'Panels show Wetterzentrale\'s precipitation field at the selected forecast lead and valid time.'},
+    19:{name:'10 m Wind Gust', short:'10 m Wind Gust', var:19, nir:2, tr:1, unitText:'Wind gust', notice:'Panels show the model 10 m wind-gust field at the selected forecast lead and valid time.'},
+    25:{name:'Total Snow Depth', short:'Total Snow Depth', var:25, nir:2, tr:1, unitText:'Snow depth', notice:'Panels show the model total snow-depth field at the selected forecast lead and valid time.'}
   };
   const MAX_LEAD = 180;
   const COMMON_LAG_HOURS = 4; // deliberately conservative: keeps common 00/06/12/18 cycle safely available
@@ -328,7 +330,7 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
 
   function sourcePageUrl(m, cycle, lead){
     const p = selectedParameter();
-    return `https://wetterzentrale.de/en/topkarten.php?h=0&lid=OP&map=20&model=${m.id}&mv=0&run=${cycle}&time=${lead}&tr=1&var=${p.var}`;
+    return `https://wetterzentrale.de/en/topkarten.php?h=0&lid=OP&map=20&model=${m.id}&mv=0&run=${cycle}&time=${lead}&tr=${p.tr || 1}&var=${p.var}`;
   }
 
   function availability(m, cycle, lead){
@@ -420,7 +422,7 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
     validUtc.textContent = `Valid: ${fmtUtc(validDate)}`;
     validLocal.textContent = `UK local: ${fmtLondon(validDate)}`;
     runLabel.textContent = `Base run: ${fmtUtc(runDate).replace(' UTC','Z')} · common cycle ${pad2(cycle)}Z`;
-    wzMultiLink.href = `https://wetterzentrale.de/en/multimodel.php?map=20&var=${p.var}&time=${ymdh(validDate)}&nir=${p.nir}&tr=1#mapref`;
+    wzMultiLink.href = `https://wetterzentrale.de/en/multimodel.php?map=20&var=${p.var}&time=${ymdh(validDate)}&nir=${p.nir}&tr=${p.tr || 1}#mapref`;
 
     let visible = 0;
     models.forEach(m => {
