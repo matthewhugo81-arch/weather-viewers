@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Wetterzentrale Run-to-Run Model Viewer v8</title>
+<title>Wetterzentrale Run-to-Run Model Viewer v9</title>
 <style>
 :root{
   --bg:#071018;--panel:#0d1822;--panel2:#132330;--line:#294052;
@@ -51,7 +51,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 <header>
   <div class="brand">
     <h1>Wetterzentrale • Run-to-Run Viewer</h1>
-    <div class="sub">Run-to-run model cycles • exact valid-time matching where available • Europe • v8</div>
+    <div class="sub">Run-to-run model cycles • exact valid-time matching where available • Europe • v9</div>
   </div>
   <div class="toolbar">
     <div class="group"><span class="label">Mode</span><select id="compareMode">
@@ -62,6 +62,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
       <option value="gfs" selected>GFS</option>
       <option value="gfsens">GFS ENS</option>
       <option value="ecm">ECMWF</option>
+      <option value="aifs">AIFS</option>
       <option value="ecmens">EC ENS</option>
       <option value="gem">GEM</option>
       <option value="icon">ICON</option>
@@ -70,9 +71,11 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
     <div class="group"><span class="label">Variable</span><select id="variable">
       <option value="1" selected>500 hPa height + MSLP</option>
       <option value="2">850 hPa temperature</option>
+      <option value="34">850 hPa Temp. Deviation</option>
+      <option value="21">300 hPa Wind</option>
     </select></div>
-    <div class="group"><span class="label">Reference run</span><select id="refRun"></select></div>
-    <div class="group"><span class="label">Reference T+</span><select id="lead" style="width:82px"></select><span style="font-size:11px;color:var(--muted)">h</span></div>
+    <div class="group" style="display:none" aria-hidden="true"><select id="refRun" tabindex="-1"></select></div>
+    <div class="group"><span class="label">T+</span><select id="lead" style="width:82px"></select><span style="font-size:11px;color:var(--muted)">h</span></div>
     <div class="group" id="ageGroup" style="display:none"><span class="label">Run age</span><select id="runAge">
       <option value="0">Reference cycle</option>
       <option value="12">12 h older</option>
@@ -99,7 +102,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 <footer>
   <div class="controls"><button id="prev">◀</button><button id="play">▶</button><button id="next">▶</button></div>
   <div class="runBar" id="runBar"></div>
-  <div class="help">sequence: oldest → newest • history: oldest → newest • all-model: ECMWF → EC ENS → GFS → GFS ENS → UKMO EU → GEM → ICON • wheel = zoom • drag = pan • 0 = reset • Space = play/pause • ←/→ = run</div>
+  <div class="help">sequence: oldest → newest • history: oldest → newest • all-model: ECMWF → AIFS → EC ENS → GFS → GFS ENS → UKMO EU → GEM → ICON • wheel = zoom • drag = pan • 0 = reset • Space = play/pause • ←/→ = run</div>
 </footer>
 </div>
 
@@ -119,14 +122,15 @@ Animation always progresses oldest → newest.</div>
   <h3>Important Wetterzentrale limitation</h3>
   <div class="note">
     These direct chart URLs represent Wetterzentrale's current stored run slots, not an unlimited archive. The viewer treats ECMWF and EC ENS as 00/12 only because Wetterzentrale's 06/18 ECMWF PNG slots can contain stale old charts.
-    Therefore GFS, GFS ENS and ICON can use 00/06/12/18 cycle slots, while GEM, ECMWF, EC ENS and UKMO EU are primarily 00/12 comparisons. EC ENS mean output is 24-hourly (T+0, 24, 48 … 240), so its 00Z/12Z history uses the same forecast lead instead of requesting unavailable 12-hour-offset leads. Other models continue to use exact same-valid-time matching where the required forecast hour exists.
+    Therefore GFS, GFS ENS, ICON and AIFS can use 00/06/12/18 cycle slots, while GEM, ECMWF, EC ENS and UKMO EU are primarily 00/12 comparisons. EC ENS mean output is 24-hourly (T+0, 24, 48 … 240), so its 00Z/12Z history uses the same forecast lead instead of requesting unavailable 12-hour-offset leads. Other models continue to use exact same-valid-time matching where the required forecast hour exists.
   </div>
   <h3>All-model comparison</h3>
   <div class="note">
-    Switch Mode to <b>All models • same valid time</b>. Choose a reference 00Z/12Z cycle, T+ lead and a run age (reference, 12 h older, 24 h older, etc.). The viewer then cycles ECMWF, EC ENS, GFS, GFS ENS, UKMO EU, GEM and ICON maps from the same initialisation cycle and exactly the same valid time. Models that do not supply that lead/variable are skipped.
+    Switch Mode to <b>All models • same valid time</b>. Choose a T+ lead and a run age (reference, 12 h older, 24 h older, etc.). The viewer then cycles ECMWF, AIFS, EC ENS, GFS, GFS ENS, UKMO EU, GEM and ICON maps from the same initialisation cycle and exactly the same valid time. Models that do not supply that lead/variable are skipped.
   </div>
-  <h3>Models in v8</h3>
+  <h3>Models in v9</h3>
   <div class="diag">ECMWF: ECMOPEU{run}_{lead}_{var}.png (OP; 00/12)
+AIFS:  AIFSOPEU{run}_{lead}_{var}.png (OP; 00/06/12/18; 6-hour forecast steps)
 EC ENS: ECMAVGEU{run}_{lead}_{var}.png (AVG; 00/12; 24-hour forecast steps)
 GFS:   GFSOPEU{run}_{lead}_{var}.png (OP; 00/06/12/18)
 GFS ENS: GFSAVGEU{run}_{lead}_{var}.png (AVG; 00/06/12/18)
@@ -150,17 +154,23 @@ const e={};
 'frameLabel','imageUrlLabel','empty','prev','play','next','runBar','viewer','drawer','animMode','hold',
 'closeDrawer','toast'].forEach(id=>e[id]=$(id));
 
-const MODEL_ORDER=['ecm','ecmens','gfs','gfsens','ukmo','gem','icon'];
+const MODEL_ORDER=['ecm','aifs','ecmens','gfs','gfsens','ukmo','gem','icon'];
 const MODELS={
- gfs:{name:'GFS',prefix:'GFSOPEU',cycles:[0,6,12,18],max:384,vars:[1,2],page:'gfs',lid:'OP',tr:6},
- gfsens:{name:'GFS ENS',prefix:'GFSAVGEU',cycles:[0,6,12,18],max:384,vars:[1,2],page:'gfs',lid:'AVG',tr:24},
- ecm:{name:'ECMWF',prefix:'ECMOPEU',cycles:[0,12],max:360,vars:[1,2],page:'ecm',lid:'OP',tr:6},
- ecmens:{name:'EC ENS',prefix:'ECMAVGEU',cycles:[0,12],max:240,vars:[1,2],page:'ecm',lid:'AVG',tr:24,leadStep:24,historySameLead:true},
- gem:{name:'GEM',prefix:'GEMOPEU',cycles:[0,12],max:240,vars:[1,2],page:'gem',lid:'OP',tr:6},
- icon:{name:'ICON',prefix:'ICOOPEU',cycles:[0,6,12,18],max:180,vars:[1,2],page:'ico',lid:'OP',tr:6},
- ukmo:{name:'UKMO EU',prefix:'UKMHDOPEU',cycles:[0,12],max:168,vars:[1,2],page:'ukmhd',lid:'OP',tr:6}
+ gfs:{name:'GFS',prefix:'GFSOPEU',cycles:[0,6,12,18],max:384,vars:[1,2,34,21],page:'gfs',lid:'OP',tr:6},
+ gfsens:{name:'GFS ENS',prefix:'GFSAVGEU',cycles:[0,6,12,18],max:384,vars:[1,2,34],page:'gfs',lid:'AVG',tr:24},
+ ecm:{name:'ECMWF',prefix:'ECMOPEU',cycles:[0,12],max:360,vars:[1,2,34],page:'ecm',lid:'OP',tr:6},
+ aifs:{name:'AIFS',prefix:'AIFSOPEU',cycles:[0,6,12,18],max:360,vars:[1,2,34],page:'aifs',lid:'OP',tr:6},
+ ecmens:{name:'EC ENS',prefix:'ECMAVGEU',cycles:[0,12],max:240,vars:[1,2,34],page:'ecm',lid:'AVG',tr:24,leadStep:24,historySameLead:true},
+ gem:{name:'GEM',prefix:'GEMOPEU',cycles:[0,12],max:240,vars:[1,2,34,21],page:'gem',lid:'OP',tr:6},
+ icon:{name:'ICON',prefix:'ICOOPEU',cycles:[0,6,12,18],max:180,vars:[1,2,21],page:'ico',lid:'OP',tr:6},
+ ukmo:{name:'UKMO EU',prefix:'UKMHDOPEU',cycles:[0,12],max:168,vars:[1,2,21],page:'ukmhd',lid:'OP',tr:6}
 };
-const VARS={1:'500 hPa height + MSLP',2:'850 hPa temperature'};
+const VARS={
+  1:'500 hPa height + MSLP',
+  2:'850 hPa temperature',
+  34:'850 hPa Temp. Deviation',
+  21:'300 hPa Wind'
+};
 const REFERENCE_LEADS=[0,6,12,18,24,36,48,60,72,84,96,120,132,144,168,192,216,240];
 const EC_ENS_LEADS=[0,24,48,72,96,120,144,168,192,216,240];
 const BASE='https://wetterzentrale.de/maps/';
@@ -181,7 +191,7 @@ function buildHistoryFrames(){
   stop();resetZoom();
   const m=MODELS[e.model.value],ref=+e.refRun.value,baseLead=+e.lead.value,v=+e.variable.value;
   if(!m.vars.includes(v)){
-    e.variable.value='1';toast(`${m.name} does not offer that variable here; switched to 500 hPa + MSLP`);
+    e.variable.value='1';toast(`${m.name} does not offer that variable on Wetterzentrale; switched to 500 hPa + MSLP`);
   }
   const vv=+e.variable.value;
   state.frames=orderedRuns(m,ref).map((x,i)=>{
