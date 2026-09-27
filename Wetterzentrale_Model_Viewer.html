@@ -113,7 +113,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 <footer>
   <div class="controls"><button id="prev">◀</button><button id="play">▶</button><button id="next">▶</button></div>
   <div class="runBar" id="runBar"></div>
-  <div class="help">sequence: oldest → newest • history: oldest → newest • all-model: ECMWF → AIFS → EC ENS → GFS → GFS ENS → UKMO EU → GEM → ICON • wheel = zoom • drag = pan • 0 = reset • Space = play/pause • ←/→ = run</div>
+  <div class="help">opens on newest available run • play: oldest → newest • all-model: ECMWF → AIFS → EC ENS → GFS → GFS ENS → UKMO EU → GEM → ICON • wheel = zoom • drag = pan • 0 = reset • Space = play/pause • ←/→ = run</div>
 </footer>
 </div>
 
@@ -132,15 +132,15 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 Animation always progresses oldest → newest.</div>
   <h3>Important Wetterzentrale limitation</h3>
   <div class="note">
-    These direct chart URLs represent Wetterzentrale's current stored run slots, not an unlimited archive. The viewer exposes Wetterzentrale's current ECMWF 00/06/12/18 operational run slots. EC ENS remains handled separately according to the ensemble-mean output available on Wetterzentrale.
-    GFS, GFS ENS, ECMWF, ICON and AIFS use 00/06/12/18 cycle slots in this viewer. GEM, EC ENS and UKMO EU remain restricted to their supported cycle slots; unsupported choices are disabled in single-model mode and skipped in all-model mode. EC ENS mean output is 24-hourly (T+0, 24, 48 … 240), so its 00Z/12Z history uses the same forecast lead instead of requesting unavailable 12-hour-offset leads. Other models continue to use exact same-valid-time matching where the required forecast hour exists.
+    These direct chart URLs represent Wetterzentrale's current stored run slots, not an unlimited archive. ECMWF OPER is treated as a 00Z/12Z model, matching Wetterzentrale's stated deterministic update schedule. EC ENS remains handled separately according to the ensemble-mean output available on Wetterzentrale.
+    GFS, GFS ENS, ICON and AIFS use 00/06/12/18 cycle slots. ECMWF OPER, EC ENS, GEM and UKMO EU use their supported 00/12 cycle slots; unsupported 06/18 choices are disabled in single-model mode and skipped in all-model mode. For ECMWF OPER run-to-run viewing, the 00Z and 12Z cards use the same T+ rather than an offset exact-valid filename, because Wetterzentrale can leave old static PNGs at some offset filenames even though they still return as valid images. The card therefore labels the older ECMWF cycle as same T+ and makes clear that its valid time is 12 hours earlier. EC ENS mean output remains 24-hourly.
   </div>
   <h3>All-model comparison</h3>
   <div class="note">
     Switch Mode to <b>All models • same valid time</b>. Choose the 00Z, 06Z, 12Z or 18Z run, a T+ lead and a run age (selected cycle, 12 h older, 24 h older, etc.). The viewer then cycles ECMWF, AIFS, EC ENS, GFS, GFS ENS, UKMO EU, GEM and ICON maps from the same initialisation cycle and exactly the same valid time. Models that do not supply that lead/variable are skipped.
   </div>
   <h3>Models in v9</h3>
-  <div class="diag">ECMWF: ECMOPEU{run}_{lead}_{var}.png (OP; 00/06/12/18)
+  <div class="diag">ECMWF: ECMOPEU{run}_{lead}_{var}.png (OP; 00/12)
 AIFS:  AIFSOPEU{run}_{lead}_{var}.png (OP; 00/06/12/18; 6-hour forecast steps)
 EC ENS: ECMAVGEU{run}_{lead}_{var}.png (AVG; 00/12; 24-hour forecast steps)
 GFS:   GFSOPEU{run}_{lead}_{var}.png (OP; 00/06/12/18)
@@ -169,7 +169,7 @@ const MODEL_ORDER=['ecm','aifs','ecmens','gfs','gfsens','ukmo','gem','icon'];
 const MODELS={
  gfs:{name:'GFS',prefix:'GFSOPEU',cycles:[0,6,12,18],max:384,vars:[1,2,34,21],page:'gfs',lid:'OP',tr:6,lag:4},
  gfsens:{name:'GFS ENS',prefix:'GFSAVGEU',cycles:[0,6,12,18],max:384,vars:[1,2,34],page:'gfs',lid:'AVG',tr:24,lag:4},
- ecm:{name:'ECMWF',prefix:'ECMOPEU',cycles:[0,6,12,18],max:360,vars:[1,2,34],page:'ecm',lid:'OP',tr:6,lag:7},
+ ecm:{name:'ECMWF',prefix:'ECMOPEU',cycles:[0,12],max:360,vars:[1,2,34,21],page:'ecm',lid:'OP',tr:12,lag:7,historySameLead:true},
  aifs:{name:'AIFS',prefix:'AIFSOPEU',cycles:[0,6,12,18],max:360,vars:[1,2,34],page:'aifs',lid:'OP',tr:6,lag:1},
  ecmens:{name:'EC ENS',prefix:'ECMAVGEU',cycles:[0,12],max:240,vars:[1,2,34],page:'ecm',lid:'AVG',tr:24,leadStep:24,historySameLead:true,lag:7},
  gem:{name:'GEM',prefix:'GEMOPEU',cycles:[0,12],max:240,vars:[1,2,34,21],page:'gem',lid:'OP',tr:6,lag:6},
@@ -226,7 +226,7 @@ function buildHistoryFrames(){
     // EC ENS is a deliberate exception: Wetterzentrale's mean charts use
     // 24-hour forecast leads, so the previous 12Z cycle must stay at the
     // selected T+ (e.g. 00Z T+216 -> previous 12Z T+216), not T+228.
-    const sameLead=(e.model.value==='ecmens') || !!m.historySameLead;
+    const sameLead=!!m.historySameLead;
     const lead=sameLead ? baseLead : baseLead+x.age;
     return {run:x.run,age:x.age,lead,sameValid:!sameLead||x.age===0,sameLead,
       url:imageUrl(m,x.run,lead,vv),ok:null,index:i}
@@ -234,7 +234,7 @@ function buildHistoryFrames(){
   state.idx=0;state.generation++;
   renderRunBar();
   e.modelLabel.textContent=m.name;e.varLabel.textContent=VARS[vv];
-  status(m.historySameLead?`Checking ${state.frames.length} EC ENS same-lead run slots…`:`Checking ${state.frames.length} exact-valid run slots…`);
+  status(m.historySameLead?`Checking ${state.frames.length} same-lead run slots…`:`Checking ${state.frames.length} exact-valid run slots…`);
   if(!state.frames.length){showEmpty();return}
   checkFrames(state.generation);
 }
@@ -296,8 +296,18 @@ function updateAfterCheck(done,good){
   }
   if(good){e.empty.style.display='none';showFrame(state.idx)}
   if(done===state.frames.length){
-    if(!good){showEmpty();status('No usable maps available','bad')}
-    else {status(`${good} run${good===1?'':'s'} available • ready to play`,'ok')}
+    if(!good){
+      showEmpty();status('No usable maps available','bad')
+    } else {
+      if(e.compareMode.value==='history'){
+        const newest=state.frames
+          .map((f,i)=>({f,i}))
+          .filter(x=>x.f.ok)
+          .sort((a,b)=>a.f.age-b.f.age)[0];
+        if(newest) showFrame(newest.i);
+      }
+      status(`${good} run${good===1?'':'s'} available • ready to play`,'ok')
+    }
   }else status(`${good} available • ${done}/${state.frames.length} checked`);
 }
 function showEmpty(){e.empty.style.display='flex';e.singleImg.removeAttribute('src')}
