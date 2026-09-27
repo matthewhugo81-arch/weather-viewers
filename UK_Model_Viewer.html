@@ -187,6 +187,7 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
         <input type="checkbox" id="hideUnavailable" /> Hide unavailable
       </label>
       <button id="refreshBtn" title="Reload all map images">Refresh</button>
+      <button id="fullscreenBtn" title="Enter full screen">⛶ Full screen</button>
     </div>
   </div>
 
@@ -278,6 +279,7 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
   const lightboxImg = $('#lightboxImg');
   const lightboxCaption = $('#lightboxCaption');
   const lightboxClose = $('#lightboxClose');
+  const fullscreenBtn = $('#fullscreenBtn');
   let timer = null;
   let cacheBust = 0;
 
@@ -503,6 +505,23 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
     timer=setInterval(()=>move(1),Number(speedSel.value));
   }
 
+  function toggleFullscreen(){
+    if (!document.fullscreenElement){
+      document.documentElement.requestFullscreen().catch(()=>{});
+    } else {
+      document.exitFullscreen();
+    }
+  }
+
+  function syncFullscreenButton(){
+    const active = !!document.fullscreenElement;
+    fullscreenBtn.textContent = active ? '⛶ Exit full screen' : '⛶ Full screen';
+    fullscreenBtn.title = active ? 'Exit full screen' : 'Enter full screen';
+  }
+
+  fullscreenBtn.addEventListener('click',toggleFullscreen);
+  document.addEventListener('fullscreenchange',syncFullscreenButton);
+
   $('#prevBtn').addEventListener('click',()=>move(-1));
   $('#nextBtn').addEventListener('click',()=>move(1));
   playBtn.addEventListener('click',()=>timer?stopPlay():startPlay());
@@ -521,6 +540,7 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
     if (e.key==='ArrowLeft'){e.preventDefault();stopPlay();move(-1)}
     if (e.key==='ArrowRight'){e.preventDefault();stopPlay();move(1)}
     if (e.key===' ' && !['INPUT','SELECT','BUTTON'].includes(document.activeElement.tagName)){e.preventDefault();timer?stopPlay():startPlay()}
+    if (e.key.toLowerCase()==='f' && !['INPUT','SELECT'].includes(document.activeElement.tagName)){e.preventDefault();toggleFullscreen()}
   });
 
   jumpToNow();
