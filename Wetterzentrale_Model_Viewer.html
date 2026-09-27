@@ -18,6 +18,8 @@ header{background:#0c151e;border-bottom:1px solid var(--line);padding:8px 11px;d
 .brand{min-width:280px}.brand h1{font-size:18px;margin:0}.brand .sub{font-size:11px;color:var(--muted);margin-top:2px}
 .toolbar{display:flex;flex-wrap:wrap;gap:7px;align-items:center;flex:1}.group{display:flex;align-items:center;gap:5px;border-left:1px solid #243947;padding-left:8px}.group:first-child{border:0;padding-left:0}
 .label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#84a1b6}.small{font-size:12px;padding:5px 7px}
+#topPrev,#topPlay,#topNext{min-width:34px;padding:5px 7px;font-size:14px;line-height:1.2}
+#topPlay{background:#0c5c8f;border-color:#257db0}
 .status{font-size:11px;color:var(--muted);min-width:190px;text-align:right}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warn);margin-right:5px}.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}
 main{position:relative;min-height:0;background:#020609;overflow:hidden}
 #singleView{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
@@ -83,7 +85,11 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
       <option value="36">36 h older</option>
       <option value="48">48 h older</option>
     </select></div>
-    <div class="group"><span class="label">Speed</span><select id="speed"><option value="1500">Slow</option><option value="900" selected>Normal</option><option value="500">Fast</option><option value="260">Very fast</option></select></div>
+    <div class="group"><span class="label">Speed</span><select id="speed"><option value="1500">Slow</option><option value="900" selected>Normal</option><option value="500">Fast</option><option value="260">Very fast</option></select>
+      <button id="topPrev" class="small" title="Previous run">◀</button>
+      <button id="topPlay" class="small" title="Play / pause">▶</button>
+      <button id="topNext" class="small" title="Next run">▶</button>
+    </div>
     <div class="group"><button id="refresh" class="small">↻ Reload</button><button id="openWz" class="small">↗ Wetterzentrale</button><button id="settings" class="small">⚙ Info</button><button id="fullscreen" class="small">⛶ Full screen</button></div>
   </div>
   <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Initialising…</span></div>
@@ -151,7 +157,7 @@ const $=id=>document.getElementById(id);
 const e={};
 ['compareMode','modelGroup','ageGroup','runAge','model','variable','refRun','lead','speed','refresh','openWz','settings','fullscreen',
 'statusDot','statusText','singleView','singleStage','singleImg','modelLabel','varLabel','runLabel','sameValid',
-'frameLabel','imageUrlLabel','empty','prev','play','next','runBar','viewer','drawer','animMode','hold',
+'frameLabel','imageUrlLabel','empty','prev','play','next','topPrev','topPlay','topNext','runBar','viewer','drawer','animMode','hold',
 'closeDrawer','toast'].forEach(id=>e[id]=$(id));
 
 const MODEL_ORDER=['ecm','aifs','ecmens','gfs','gfsens','ukmo','gem','icon'];
@@ -318,9 +324,9 @@ function step(delta){
 function play(){
   const u=usable();if(state.playing||u.length<2)return;
   if(state.idx===u[u.length-1]) showFrame(u[0]);
-  state.playing=true;e.play.textContent='❚❚';schedule(+e.speed.value)
+  state.playing=true;e.play.textContent='❚❚';e.topPlay.textContent='❚❚';schedule(+e.speed.value)
 }
-function stop(){state.playing=false;clearTimeout(state.timer);state.timer=null;e.play.textContent='▶'}
+function stop(){state.playing=false;clearTimeout(state.timer);state.timer=null;e.play.textContent='▶';e.topPlay.textContent='▶'}
 function schedule(ms){clearTimeout(state.timer);if(state.playing)state.timer=setTimeout(tick,ms)}
 function tick(){
   const u=usable();if(!state.playing||u.length<2)return;
@@ -396,6 +402,7 @@ e.model.onchange=()=>{populateRuns();populateLeadOptions();buildFrames()};
 e.variable.onchange=buildFrames;e.refRun.onchange=buildFrames;e.lead.onchange=buildFrames;
 e.refresh.onclick=buildFrames;e.openWz.onclick=openWz;
 e.prev.onclick=()=>{stop();step(-1)};e.next.onclick=()=>{stop();step(1)};e.play.onclick=()=>state.playing?stop():play();
+e.topPrev.onclick=()=>{stop();step(-1)};e.topNext.onclick=()=>{stop();step(1)};e.topPlay.onclick=()=>state.playing?stop():play();
 e.settings.onclick=()=>e.drawer.classList.add('open');e.closeDrawer.onclick=()=>e.drawer.classList.remove('open');
 e.fullscreen.onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
 document.addEventListener('keydown',ev=>{
