@@ -132,15 +132,15 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 Animation always progresses oldest → newest.</div>
   <h3>Important Wetterzentrale limitation</h3>
   <div class="note">
-    These direct chart URLs represent Wetterzentrale's current stored run slots, not an unlimited archive. The viewer treats ECMWF and EC ENS as 00/12 only because Wetterzentrale's 06/18 ECMWF PNG slots can contain stale old charts.
-    GFS, GFS ENS, ICON and AIFS use 00/06/12/18 cycle slots. GEM, ECMWF, EC ENS and UKMO EU use 00/12; their unsupported 06/18 choices are disabled in single-model mode and skipped in all-model mode. EC ENS mean output is 24-hourly (T+0, 24, 48 … 240), so its 00Z/12Z history uses the same forecast lead instead of requesting unavailable 12-hour-offset leads. Other models continue to use exact same-valid-time matching where the required forecast hour exists.
+    These direct chart URLs represent Wetterzentrale's current stored run slots, not an unlimited archive. The viewer exposes Wetterzentrale's current ECMWF 00/06/12/18 operational run slots. EC ENS remains handled separately according to the ensemble-mean output available on Wetterzentrale.
+    GFS, GFS ENS, ECMWF, ICON and AIFS use 00/06/12/18 cycle slots in this viewer. GEM, EC ENS and UKMO EU remain restricted to their supported cycle slots; unsupported choices are disabled in single-model mode and skipped in all-model mode. EC ENS mean output is 24-hourly (T+0, 24, 48 … 240), so its 00Z/12Z history uses the same forecast lead instead of requesting unavailable 12-hour-offset leads. Other models continue to use exact same-valid-time matching where the required forecast hour exists.
   </div>
   <h3>All-model comparison</h3>
   <div class="note">
     Switch Mode to <b>All models • same valid time</b>. Choose the 00Z, 06Z, 12Z or 18Z run, a T+ lead and a run age (selected cycle, 12 h older, 24 h older, etc.). The viewer then cycles ECMWF, AIFS, EC ENS, GFS, GFS ENS, UKMO EU, GEM and ICON maps from the same initialisation cycle and exactly the same valid time. Models that do not supply that lead/variable are skipped.
   </div>
   <h3>Models in v9</h3>
-  <div class="diag">ECMWF: ECMOPEU{run}_{lead}_{var}.png (OP; 00/12)
+  <div class="diag">ECMWF: ECMOPEU{run}_{lead}_{var}.png (OP; 00/06/12/18)
 AIFS:  AIFSOPEU{run}_{lead}_{var}.png (OP; 00/06/12/18; 6-hour forecast steps)
 EC ENS: ECMAVGEU{run}_{lead}_{var}.png (AVG; 00/12; 24-hour forecast steps)
 GFS:   GFSOPEU{run}_{lead}_{var}.png (OP; 00/06/12/18)
@@ -169,7 +169,7 @@ const MODEL_ORDER=['ecm','aifs','ecmens','gfs','gfsens','ukmo','gem','icon'];
 const MODELS={
  gfs:{name:'GFS',prefix:'GFSOPEU',cycles:[0,6,12,18],max:384,vars:[1,2,34,21],page:'gfs',lid:'OP',tr:6,lag:4},
  gfsens:{name:'GFS ENS',prefix:'GFSAVGEU',cycles:[0,6,12,18],max:384,vars:[1,2,34],page:'gfs',lid:'AVG',tr:24,lag:4},
- ecm:{name:'ECMWF',prefix:'ECMOPEU',cycles:[0,12],max:360,vars:[1,2,34],page:'ecm',lid:'OP',tr:6,lag:7},
+ ecm:{name:'ECMWF',prefix:'ECMOPEU',cycles:[0,6,12,18],max:360,vars:[1,2,34],page:'ecm',lid:'OP',tr:6,lag:7},
  aifs:{name:'AIFS',prefix:'AIFSOPEU',cycles:[0,6,12,18],max:360,vars:[1,2,34],page:'aifs',lid:'OP',tr:6,lag:1},
  ecmens:{name:'EC ENS',prefix:'ECMAVGEU',cycles:[0,12],max:240,vars:[1,2,34],page:'ecm',lid:'AVG',tr:24,leadStep:24,historySameLead:true,lag:7},
  gem:{name:'GEM',prefix:'GEMOPEU',cycles:[0,12],max:240,vars:[1,2,34,21],page:'gem',lid:'OP',tr:6,lag:6},
