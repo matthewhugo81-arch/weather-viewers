@@ -95,6 +95,31 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
 .footer a{color:#91c8f2;text-decoration:none}.footer a:hover{text-decoration:underline}
 .sep{opacity:.45;padding:0 6px}
 .map-wrap a[data-link]{cursor:zoom-in}
+
+/* Compact all-model overview */
+body.mosaic-mode{padding-bottom:8px}
+body.mosaic-mode .content{padding:8px 8px 0}
+body.mosaic-mode .grid{max-width:none;gap:6px}
+body.mosaic-mode .card{border-radius:7px}
+body.mosaic-mode .card-head{padding:5px 7px;min-height:29px}
+body.mosaic-mode .model-name{font-size:11.5px}
+body.mosaic-mode .model-meta{gap:3px}
+body.mosaic-mode .mini{font-size:8.5px;padding:2px 4px}
+body.mosaic-mode .card-foot{display:none}
+body.mosaic-mode .notice{display:none}
+body.mosaic-mode .footer{display:none}
+body.mosaic-mode .map-wrap{aspect-ratio:959/742}
+body.mosaic-mode .validbar{padding-top:6px;padding-bottom:6px}
+body.mosaic-mode .header{padding-top:9px;padding-bottom:7px}
+body.mosaic-mode .controls{padding-bottom:8px}
+body.mosaic-mode .title h1{font-size:18px}
+body.mosaic-mode .title p{font-size:10.5px}
+body.mosaic-mode .badge{font-size:9.5px;padding:4px 7px}
+body.mosaic-mode .loading{font-size:10px}
+body.mosaic-mode .placeholder{padding:10px}
+body.mosaic-mode .placeholder strong{font-size:11px}
+body.mosaic-mode .placeholder small{font-size:9px}
+
 .lightbox{
   position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;
   padding:22px;background:rgba(2,8,16,.92);backdrop-filter:blur(6px)
@@ -179,7 +204,10 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
         <option value="2">2 across</option>
         <option value="3" selected>3 across</option>
         <option value="4">4 across</option>
+        <option value="5">5 across</option>
+        <option value="6">6 across</option>
       </select>
+      <button id="mosaicBtn" title="Compact all-model overview">Mosaic</button>
     </div>
 
     <div class="ctrl-group">
@@ -280,8 +308,12 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
   const lightboxCaption = $('#lightboxCaption');
   const lightboxClose = $('#lightboxClose');
   const fullscreenBtn = $('#fullscreenBtn');
+  const colsSel = $('#colsSel');
+  const mosaicBtn = $('#mosaicBtn');
   let timer = null;
   let cacheBust = 0;
+  let mosaicMode = false;
+  let previousCols = colsSel.value;
 
   const cards = new Map();
 
@@ -505,6 +537,24 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
     timer=setInterval(()=>move(1),Number(speedSel.value));
   }
 
+  function setMosaicMode(on){
+    mosaicMode = !!on;
+    document.body.classList.toggle('mosaic-mode', mosaicMode);
+    mosaicBtn.classList.toggle('primary', mosaicMode);
+    mosaicBtn.textContent = mosaicMode ? 'Exit Mosaic' : 'Mosaic';
+    mosaicBtn.title = mosaicMode ? 'Return to normal panel layout' : 'Compact all-model overview';
+    if (mosaicMode){
+      previousCols = colsSel.value;
+      colsSel.value = '6';
+      document.documentElement.style.setProperty('--cols','6');
+    } else {
+      colsSel.value = previousCols;
+      document.documentElement.style.setProperty('--cols', previousCols);
+    }
+  }
+
+  mosaicBtn.addEventListener('click',()=>setMosaicMode(!mosaicMode));
+
   function toggleFullscreen(){
     if (!document.fullscreenElement){
       document.documentElement.requestFullscreen().catch(()=>{});
@@ -532,7 +582,17 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
   $('#nowBtn').addEventListener('click',()=>{stopPlay();jumpToNow();});
   $('#refreshBtn').addEventListener('click',()=>{cacheBust=Date.now();render();});
   hideUnavailable.addEventListener('change',render);
-  $('#colsSel').addEventListener('change',e=>document.documentElement.style.setProperty('--cols',e.target.value));
+  colsSel.addEventListener('change',e=>{
+    if (mosaicMode){
+      mosaicMode = false;
+      document.body.classList.remove('mosaic-mode');
+      mosaicBtn.classList.remove('primary');
+      mosaicBtn.textContent = 'Mosaic';
+      mosaicBtn.title = 'Compact all-model overview';
+    }
+    previousCols = e.target.value;
+    document.documentElement.style.setProperty('--cols',e.target.value);
+  });
   lightboxClose.addEventListener('click',closeLightbox);
   imageLightbox.addEventListener('click',e=>{ if(e.target===imageLightbox) closeLightbox(); });
   document.addEventListener('keydown',e=>{
@@ -541,6 +601,7 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
     if (e.key==='ArrowRight'){e.preventDefault();stopPlay();move(1)}
     if (e.key===' ' && !['INPUT','SELECT','BUTTON'].includes(document.activeElement.tagName)){e.preventDefault();timer?stopPlay():startPlay()}
     if (e.key.toLowerCase()==='f' && !['INPUT','SELECT'].includes(document.activeElement.tagName)){e.preventDefault();toggleFullscreen()}
+    if (e.key.toLowerCase()==='m' && !['INPUT','SELECT'].includes(document.activeElement.tagName)){e.preventDefault();setMosaicMode(!mosaicMode)}
   });
 
   jumpToNow();
