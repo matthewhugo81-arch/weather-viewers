@@ -18,8 +18,7 @@ header{background:#0c151e;border-bottom:1px solid var(--line);padding:8px 11px;d
 .brand{min-width:280px}.brand h1{font-size:18px;margin:0}.brand .sub{font-size:11px;color:var(--muted);margin-top:2px}
 .toolbar{display:flex;flex-wrap:wrap;gap:7px;align-items:center;flex:1}.group{display:flex;align-items:center;gap:5px;border-left:1px solid #243947;padding-left:8px}.group:first-child{border:0;padding-left:0}
 .label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#84a1b6}.small{font-size:12px;padding:5px 7px}
-#topPrev,#topPlay,#topNext{min-width:34px;padding:5px 7px;font-size:14px;line-height:1.2}
-#topPlay{background:#0c5c8f;border-color:#257db0}
+#topPrev,#topNext{min-width:34px;padding:5px 7px;font-size:14px;line-height:1.2}
 .status{font-size:11px;color:var(--muted);min-width:190px;text-align:right}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warn);margin-right:5px}.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}
 main{position:relative;min-height:0;background:#020609;overflow:hidden}
 #singleView{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
@@ -83,9 +82,8 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
       <option value="18">18Z</option>
     </select></div>
     <div class="group"><span class="label">T+</span>
-      <button id="topPrev" class="small" title="Previous forecast time">◀</button>
       <select id="lead" style="width:82px"></select><span style="font-size:11px;color:var(--muted)">h</span>
-      <button id="topPlay" class="small" title="Play / pause forecast times">▶</button>
+      <button id="topPrev" class="small" title="Previous forecast time">◀</button>
       <button id="topNext" class="small" title="Next forecast time">▶</button>
     </div>
     <div class="group" id="ageGroup" style="display:none"><span class="label">Run age</span><select id="runAge">
@@ -163,7 +161,7 @@ const $=id=>document.getElementById(id);
 const e={};
 ['compareMode','modelGroup','ageGroup','runAge','model','variable','refRun','lead','speed','refresh','openWz','settings','fullscreen',
 'statusDot','statusText','singleView','singleStage','singleImg','modelLabel','varLabel','runLabel','sameValid',
-'frameLabel','imageUrlLabel','empty','prev','play','next','topPrev','topPlay','topNext','runBar','viewer','drawer','animMode','hold',
+'frameLabel','imageUrlLabel','empty','prev','play','next','topPrev','topNext','runBar','viewer','drawer','animMode','hold',
 'closeDrawer','toast'].forEach(id=>e[id]=$(id));
 
 const MODEL_ORDER=['ecm','aifs','ecmens','gfs','gfsens','ukmo','gem','icon'];
@@ -186,7 +184,7 @@ const VARS={
 const REFERENCE_LEADS=[0,6,12,18,24,36,48,60,72,84,96,108,120,132,144,156,168,180,192,204,216,228,240];
 const EC_ENS_LEADS=[0,24,48,72,96,120,144,168,192,216,240];
 const BASE='https://wetterzentrale.de/maps/';
-const state={frames:[],idx:0,playing:false,timer:null,dir:1,zoom:1,panX:0,panY:0,baseW:0,baseH:0,drag:false,start:null,generation:0,tplusPlaying:false,tplusTimer:null};
+const state={frames:[],idx:0,playing:false,timer:null,dir:1,zoom:1,panX:0,panY:0,baseW:0,baseH:0,drag:false,start:null,generation:0};
 
 function padRun(n){return String(n).padStart(2,'0')}
 function padLead(n){return n<10?String(n).padStart(2,'0'):String(n)}
@@ -429,16 +427,10 @@ function updateModeUI(){
 e.compareMode.onchange=()=>{updateModeUI();populateLeadOptions();buildFrames()};
 e.runAge.onchange=buildFrames;
 e.model.onchange=()=>{populateRuns(true);populateLeadOptions();buildFrames()};
-e.variable.onchange=buildFrames;e.refRun.onchange=buildFrames;e.lead.onchange=()=>{stopTplus();buildFrames()};
+e.variable.onchange=buildFrames;e.refRun.onchange=buildFrames;e.lead.onchange=buildFrames;
 e.refresh.onclick=buildFrames;e.openWz.onclick=openWz;
 e.prev.onclick=()=>{stop();step(-1)};e.next.onclick=()=>{stop();step(1)};e.play.onclick=()=>state.playing?stop():play();
 
-function stopTplus(){
-  state.tplusPlaying=false;
-  clearTimeout(state.tplusTimer);
-  state.tplusTimer=null;
-  e.topPlay.textContent='▶';
-}
 function stepTplus(dir){
   const opts=[...e.lead.options].filter(o=>!o.disabled);
   if(!opts.length)return false;
@@ -450,26 +442,8 @@ function stepTplus(dir){
   buildFrames();
   return true;
 }
-function scheduleTplus(){
-  if(!state.tplusPlaying)return;
-  state.tplusTimer=setTimeout(()=>{
-    if(!stepTplus(1)){stopTplus();return}
-    scheduleTplus();
-  },+e.speed.value);
-}
-function playTplus(){
-  if(state.tplusPlaying){stopTplus();return}
-  if(!stepTplus(1)){
-    const opts=[...e.lead.options].filter(o=>!o.disabled);
-    if(opts.length){e.lead.value=opts[0].value;buildFrames()}
-  }
-  state.tplusPlaying=true;
-  e.topPlay.textContent='❚❚';
-  scheduleTplus();
-}
-e.topPrev.onclick=()=>{stopTplus();stepTplus(-1)};
-e.topNext.onclick=()=>{stopTplus();stepTplus(1)};
-e.topPlay.onclick=()=>state.tplusPlaying?stopTplus():playTplus();
+e.topPrev.onclick=()=>stepTplus(-1);
+e.topNext.onclick=()=>stepTplus(1);
 e.settings.onclick=()=>e.drawer.classList.add('open');e.closeDrawer.onclick=()=>e.drawer.classList.remove('open');
 e.fullscreen.onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
 document.addEventListener('keydown',ev=>{
