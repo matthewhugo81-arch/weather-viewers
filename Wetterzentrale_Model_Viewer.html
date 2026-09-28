@@ -137,7 +137,7 @@ Animation always progresses oldest → newest.</div>
   <h3>Important Wetterzentrale limitation</h3>
   <div class="note">
     These direct chart URLs represent Wetterzentrale's current stored run slots, not an unlimited archive. ECMWF OPER is treated as a 00Z/12Z model, matching Wetterzentrale's stated deterministic update schedule. EC ENS remains handled separately according to the ensemble-mean output available on Wetterzentrale.
-    GFS, GFS ENS, ICON and AIFS use 00/06/12/18 cycle slots. ECMWF OPER, EC ENS, GEM and UKMO EU use their supported 00/12 cycle slots; unsupported 06/18 choices are disabled in single-model mode and skipped in all-model mode. For ECMWF OPER run-to-run viewing, the 00Z and 12Z cards use the same T+ rather than an offset exact-valid filename, because Wetterzentrale can leave old static PNGs at some offset filenames even though they still return as valid images. The card therefore labels the older ECMWF cycle as same T+ and makes clear that its valid time is 12 hours earlier. EC ENS mean output remains 24-hourly.
+    GFS, GFS ENS, ICON and AIFS use 00/06/12/18 cycle slots. ECMWF OPER, EC ENS, GEM and UKMO EU use their supported 00/12 cycle slots; unsupported 06/18 choices are disabled in single-model mode and skipped in all-model mode. For ECMWF OPER run-to-run viewing, the 00Z and 12Z cards use the same T+ rather than an offset exact-valid filename, because Wetterzentrale can leave old static PNGs at some offset filenames even though they still return as valid images. The card therefore labels the older ECMWF cycle as same T+ and makes clear that its valid time is 12 hours earlier. ECMWF OPER and EC ENS are restricted in this viewer to Wetterzentrale's 24-hour forecast-step sequence (T+0, 24, 48 … 240). Other models retain their finer forecast-time options.
   </div>
   <h3>All-model comparison</h3>
   <div class="note">
@@ -173,7 +173,7 @@ const MODEL_ORDER=['ecm','aifs','ecmens','gfs','gfsens','ukmo','gem','icon'];
 const MODELS={
  gfs:{name:'GFS',prefix:'GFSOPEU',cycles:[0,6,12,18],max:384,vars:[1,2,34,21],page:'gfs',lid:'OP',tr:6,lag:4},
  gfsens:{name:'GFS ENS',prefix:'GFSAVGEU',cycles:[0,6,12,18],max:384,vars:[1,2,34],page:'gfs',lid:'AVG',tr:24,lag:4},
- ecm:{name:'ECMWF',prefix:'ECMOPEU',cycles:[0,12],max:360,vars:[1,2,34,21],page:'ecm',lid:'OP',tr:12,lag:7,historySameLead:true},
+ ecm:{name:'ECMWF',prefix:'ECMOPEU',cycles:[0,12],max:360,vars:[1,2,34,21],page:'ecm',lid:'OP',tr:24,leadStep:24,lag:7,historySameLead:true},
  aifs:{name:'AIFS',prefix:'AIFSOPEU',cycles:[0,6,12,18],max:360,vars:[1,2,34],page:'aifs',lid:'OP',tr:6,lag:1},
  ecmens:{name:'EC ENS',prefix:'ECMAVGEU',cycles:[0,12],max:240,vars:[1,2,34],page:'ecm',lid:'AVG',tr:24,leadStep:24,historySameLead:true,lag:7},
  gem:{name:'GEM',prefix:'GEMOPEU',cycles:[0,12],max:240,vars:[1,2,34,21],page:'gem',lid:'OP',tr:6,lag:6},
@@ -187,7 +187,7 @@ const VARS={
   21:'300 hPa Wind'
 };
 const REFERENCE_LEADS=[0,6,12,18,24,36,48,60,72,84,96,108,120,132,144,156,168,180,192,204,216,228,240];
-const EC_ENS_LEADS=[0,24,48,72,96,120,144,168,192,216,240];
+const LEADS_24H=[0,24,48,72,96,120,144,168,192,216,240];
 const BASE='https://wetterzentrale.de/maps/';
 const state={frames:[],idx:0,playing:false,timer:null,dir:1,zoom:1,panX:0,panY:0,baseW:0,baseH:0,drag:false,start:null,generation:0};
 
@@ -376,9 +376,15 @@ function tick(){
 }
 function populateLeadOptions(){
   const current=+e.lead.value || 96;
-  const leads=(e.compareMode.value==='history' && e.model.value==='ecmens')?EC_ENS_LEADS:REFERENCE_LEADS;
+  const m=e.compareMode.value==='history'?MODELS[e.model.value]:null;
+  const leads=(m && m.leadStep===24)?LEADS_24H:REFERENCE_LEADS;
   e.lead.innerHTML=leads.map(h=>`<option value="${h}">${padLead(h)}</option>`).join('');
-  e.lead.value=leads.includes(current)?String(current):(leads.includes(96)?'96':String(leads[0]));
+  if(leads.includes(current)){
+    e.lead.value=String(current);
+  } else {
+    const nearest=leads.reduce((a,b)=>Math.abs(b-current)<Math.abs(a-current)?b:a,leads[0]);
+    e.lead.value=String(nearest);
+  }
 }
 function populateRuns(autoLatest=false){
   const m=MODELS[e.model.value];
