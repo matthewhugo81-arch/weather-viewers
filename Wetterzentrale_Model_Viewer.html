@@ -82,7 +82,12 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
       <option value="12">12Z</option>
       <option value="18">18Z</option>
     </select></div>
-    <div class="group"><span class="label">T+</span><select id="lead" style="width:82px"></select><span style="font-size:11px;color:var(--muted)">h</span></div>
+    <div class="group"><span class="label">T+</span>
+      <button id="topPrev" class="small" title="Previous forecast time">◀</button>
+      <select id="lead" style="width:82px"></select><span style="font-size:11px;color:var(--muted)">h</span>
+      <button id="topPlay" class="small" title="Play / pause forecast times">▶</button>
+      <button id="topNext" class="small" title="Next forecast time">▶</button>
+    </div>
     <div class="group" id="ageGroup" style="display:none"><span class="label">Run age</span><select id="runAge">
       <option value="0">Selected cycle</option>
       <option value="12">12 h older</option>
@@ -90,11 +95,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
       <option value="36">36 h older</option>
       <option value="48">48 h older</option>
     </select></div>
-    <div class="group"><span class="label">Speed</span><select id="speed"><option value="1500">Slow</option><option value="900" selected>Normal</option><option value="500">Fast</option><option value="260">Very fast</option></select>
-      <button id="topPrev" class="small" title="Previous run">◀</button>
-      <button id="topPlay" class="small" title="Play / pause">▶</button>
-      <button id="topNext" class="small" title="Next run">▶</button>
-    </div>
+    <div class="group"><span class="label">Speed</span><select id="speed"><option value="1500">Slow</option><option value="900" selected>Normal</option><option value="500">Fast</option><option value="260">Very fast</option></select></div>
     <div class="group"><button id="refresh" class="small">↻ Reload</button><button id="openWz" class="small">↗ Wetterzentrale</button><button id="settings" class="small">⚙ Info</button><button id="fullscreen" class="small">⛶ Full screen</button></div>
   </div>
   <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Initialising…</span></div>
@@ -185,7 +186,7 @@ const VARS={
 const REFERENCE_LEADS=[0,6,12,18,24,36,48,60,72,84,96,108,120,132,144,156,168,180,192,204,216,228,240];
 const EC_ENS_LEADS=[0,24,48,72,96,120,144,168,192,216,240];
 const BASE='https://wetterzentrale.de/maps/';
-const state={frames:[],idx:0,playing:false,timer:null,dir:1,zoom:1,panX:0,panY:0,baseW:0,baseH:0,drag:false,start:null,generation:0};
+const state={frames:[],idx:0,playing:false,timer:null,dir:1,zoom:1,panX:0,panY:0,baseW:0,baseH:0,drag:false,start:null,generation:0,tplusPlaying:false,tplusTimer:null};
 
 function padRun(n){return String(n).padStart(2,'0')}
 function padLead(n){return n<10?String(n).padStart(2,'0'):String(n)}
@@ -353,9 +354,9 @@ function step(delta){
 function play(){
   const u=usable();if(state.playing||u.length<2)return;
   if(state.idx===u[u.length-1]) showFrame(u[0]);
-  state.playing=true;e.play.textContent='❚❚';e.topPlay.textContent='❚❚';schedule(+e.speed.value)
+  state.playing=true;e.play.textContent='❚❚';schedule(+e.speed.value)
 }
-function stop(){state.playing=false;clearTimeout(state.timer);state.timer=null;e.play.textContent='▶';e.topPlay.textContent='▶'}
+function stop(){state.playing=false;clearTimeout(state.timer);state.timer=null;e.play.textContent='▶'}
 function schedule(ms){clearTimeout(state.timer);if(state.playing)state.timer=setTimeout(tick,ms)}
 function tick(){
   const u=usable();if(!state.playing||u.length<2)return;
@@ -428,10 +429,47 @@ function updateModeUI(){
 e.compareMode.onchange=()=>{updateModeUI();populateLeadOptions();buildFrames()};
 e.runAge.onchange=buildFrames;
 e.model.onchange=()=>{populateRuns(true);populateLeadOptions();buildFrames()};
-e.variable.onchange=buildFrames;e.refRun.onchange=buildFrames;e.lead.onchange=buildFrames;
+e.variable.onchange=buildFrames;e.refRun.onchange=buildFrames;e.lead.onchange=()=>{stopTplus();buildFrames()};
 e.refresh.onclick=buildFrames;e.openWz.onclick=openWz;
 e.prev.onclick=()=>{stop();step(-1)};e.next.onclick=()=>{stop();step(1)};e.play.onclick=()=>state.playing?stop():play();
-e.topPrev.onclick=()=>{stop();step(-1)};e.topNext.onclick=()=>{stop();step(1)};e.topPlay.onclick=()=>state.playing?stop():play();
+
+function stopTplus(){
+  state.tplusPlaying=false;
+  clearTimeout(state.tplusTimer);
+  state.tplusTimer=null;
+  e.topPlay.textContent='▶';
+}
+function stepTplus(dir){
+  const opts=[...e.lead.options].filter(o=>!o.disabled);
+  if(!opts.length)return false;
+  let i=opts.findIndex(o=>o.value===e.lead.value);
+  if(i<0)i=0;
+  const ni=i+dir;
+  if(ni<0 || ni>=opts.length)return false;
+  e.lead.value=opts[ni].value;
+  buildFrames();
+  return true;
+}
+function scheduleTplus(){
+  if(!state.tplusPlaying)return;
+  state.tplusTimer=setTimeout(()=>{
+    if(!stepTplus(1)){stopTplus();return}
+    scheduleTplus();
+  },+e.speed.value);
+}
+function playTplus(){
+  if(state.tplusPlaying){stopTplus();return}
+  if(!stepTplus(1)){
+    const opts=[...e.lead.options].filter(o=>!o.disabled);
+    if(opts.length){e.lead.value=opts[0].value;buildFrames()}
+  }
+  state.tplusPlaying=true;
+  e.topPlay.textContent='❚❚';
+  scheduleTplus();
+}
+e.topPrev.onclick=()=>{stopTplus();stepTplus(-1)};
+e.topNext.onclick=()=>{stopTplus();stepTplus(1)};
+e.topPlay.onclick=()=>state.tplusPlaying?stopTplus():playTplus();
 e.settings.onclick=()=>e.drawer.classList.add('open');e.closeDrawer.onclick=()=>e.drawer.classList.remove('open');
 e.fullscreen.onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
 document.addEventListener('keydown',ev=>{
