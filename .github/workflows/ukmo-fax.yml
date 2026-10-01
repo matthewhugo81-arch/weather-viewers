@@ -1,0 +1,115 @@
+name: UKMO FAX online archive
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'ukmo-fax-archive/**'
+      - '.github/workflows/ukmo-fax.yml'
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: ukmo-fax-publisher
+  cancel-in-progress: false
+jobs:
+  collect-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '11.19.0'
+      - name: Install locked collector dependencies
+        working-directory: ukmo-fax-archive
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Collect originals and read printed dates
+        id: collect
+        continue-on-error: true
+        working-directory: ukmo-fax-archive
+        run: node scripts/collect-online.cjs
+      - name: Validate saved archive
+        working-directory: ukmo-fax-archive
+        run: node scripts/validate.cjs
+      - name: Save images and manifest in repository history
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ukmo-fax-archive/archive
+          if ! git diff --cached --quiet; then
+            git commit -m 'Archive UKMO FAX charts'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Check existing publishing configuration
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/pages" > "$RUNNER_TEMP/pages.json"
+          mode=$(jq -r '.build_type // "legacy"' "$RUNNER_TEMP/pages.json")
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          if [ "$mode" = legacy ]; then
+            jq -e '.source.branch == "main" and .source.path == "/"' "$RUNNER_TEMP/pages.json"
+          fi
+          echo "url=$(jq -r '.html_url' "$RUNNER_TEMP/pages.json")" >> "$GITHUB_OUTPUT"
+      - name: Request branch-based Pages rebuild explicitly
+        if: steps.pages.outputs.mode == 'legacy'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds"
+      - name: Stage all existing viewers for Actions-based Pages
+        if: steps.pages.outputs.mode == 'workflow'
+        run: |
+          mkdir -p _site
+          rsync -a --exclude='.git/' --exclude='.github/' --exclude='node_modules/' --exclude='_site/' --exclude='*.traineddata*' ./ _site/
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.pages.outputs.mode == 'workflow'
+        with:
+          path: _site
+      - uses: actions/deploy-pages@v4
+        if: steps.pages.outputs.mode == 'workflow'
+        id: deploy
+      - name: Verify public manifest catches up
+        env:
+          SITE_URL: ${{ steps.pages.outputs.url }}
+        run: |
+          expected=$(node -p "require('./ukmo-fax-archive/archive/manifest.json').updated_at")
+          for attempt in $(seq 1 24); do
+            if curl --fail --silent "${SITE_URL%/}/ukmo-fax-archive/archive/manifest.json?check=$GITHUB_RUN_ID-$attempt" -o "$RUNNER_TEMP/live.json"; then
+              actual=$(jq -r '.updated_at' "$RUNNER_TEMP/live.json")
+              if [ "$actual" = "$expected" ]; then exit 0; fi
+            fi
+            sleep 15
+          done
+          echo 'The repository was updated, but the public manifest did not catch up.' >&2
+          exit 1
+      - name: Choose weekly backup
+        id: backup
+        if: always()
+        run: |
+          if [ "$(date -u +%u-%H)" = '7-03' ] || [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            echo 'save=true' >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.backup.outputs.save == 'true'
+        with:
+          name: ukmo-fax-backup-${{ github.run_id }}
+          path: ukmo-fax-archive/archive/
+          retention-days: 90
+      - name: Surface incomplete collection
+        if: steps.collect.outcome == 'failure'
+        run: |
+          echo 'Some downloads or date readings need attention; successful captures were saved and published.' >&2
+          exit 1
