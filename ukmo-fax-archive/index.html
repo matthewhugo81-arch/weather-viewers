@@ -24,6 +24,12 @@ header .eyebrow{margin-bottom:2px}
 .modes{flex-wrap:wrap;align-items:center}.period-navigation{display:inline-flex;gap:4px;margin-left:10px;padding-left:12px;border-left:1px solid var(--line)}
 @media(max-width:580px){.period-navigation{margin-left:0;padding-left:0;border-left:0;flex-basis:100%;margin-top:4px}}
 
+/* Prominent UTC run cycle, retaining the matched 32px panel title rows. */
+.cycle-badge{display:inline-block;background:var(--navy);color:#fff;border-radius:3px;padding:4px 7px;font:700 13px/1.2 ui-monospace,Consolas,monospace;white-space:nowrap}.panel-head .run-title{gap:9px;font-size:14px}.panel-head select{font-weight:650}
+
+/* Clip blank printer margins visually, without editing archive images. */
+.image-wrap{overflow:hidden;min-height:0}.wipe-canvas .overlay{height:auto;bottom:auto}
+
 </style><script defer src="archive/manifest.js"></script></head><body>
 <header><div><p class="eyebrow">NORTH ATLANTIC &amp; EUROPE · ALL TIMES UTC</p><h1>UKMO FAX <span>Run Archive &amp; Comparison</span></h1></div><div class="utc" id="updated"></div></header>
 <main><section class="controls"><label class="valid-label">Forecast period — newest saved chart<select id="valid" aria-label="Forecast period"></select></label><p class="simple-rule"><strong>A = latest chart</strong><br>Includes 00, 06, 12 & 18Z charts · B = earlier run for the same valid time</p><details class="source-settings"><summary>Source</summary><label>Chart source<select id="source"></select></label></details></section>
@@ -63,10 +69,15 @@ header .eyebrow{margin-bottom:2px}
  }
  function image(c,cls='chart'){
   const i=document.createElement('img');i.className=cls;i.src=c.filename;i.alt=`${fmt(c.valid_time)} valid · run ${fmt(c.issue_time)} · T+${c.lead_hours}`;
+  i.addEventListener('load',()=>{
+   // Only remove known blank printer margins in the display; PNG bytes stay intact.
+   const top=c.source==='metbrief-nowster'&&i.naturalHeight===864?(i.naturalWidth===1076?70:i.naturalWidth===1179?36:0):0;
+   i.style.marginTop=top?(-100*top/i.naturalWidth)+'%':'0';
+  });
   i.onerror=()=>{$('wipeWarning').textContent='Image unavailable. Keep the archive folder alongside index.html.';};return i;
  }
  function original(c){const a=document.createElement('a');a.href=c.filename;a.target='_blank';a.rel='noopener';a.textContent='Open original ↗';return a;}
- function description(c){return `Run ${short(c.issue_time)} · T+${c.lead_hours}`;}
+ function description(c){const cycle=c.issue_time.slice(11,13)+"Z";const date=new Date(c.issue_time).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});return `${cycle} ${c.lead_hours===0?"analysis":"run"} · ${date} · T+${c.lead_hours}`;}
  function panel(c,index,older){
   const p=document.createElement('article');p.className='panel';const h=document.createElement('div');h.className='panel-head';
   const l=document.createElement('div');l.className='panel-label';l.textContent=index===0?'CHART A · LATEST SAVED':index===1?'CHART B · PREVIOUS RUN':`CHART ${String.fromCharCode(65+index)} · OLDER RUN`;h.append(l);
@@ -74,7 +85,7 @@ header .eyebrow{margin-bottom:2px}
    if(!older.length){s.add(new Option('No previous run saved yet',''));s.disabled=true;}
    older.forEach((x,i)=>s.add(new Option(`${i===0?'Previous run':`${i+1} runs back`} · ${description(x)}`,x.id)));
    s.value=c?.id||'';s.onchange=()=>{chosenB=s.value;render();};h.append(s);
-  }else{const title=document.createElement('p');title.className='run-title';title.textContent=c?description(c):'No older run saved';h.append(title);}
+  }else{const title=document.createElement('p');title.className='run-title';if(c){const badge=document.createElement('strong');badge.className='cycle-badge';badge.textContent=c.issue_time.slice(11,13)+'Z '+(c.lead_hours===0?'ANALYSIS':'RUN');title.append(badge,document.createTextNode(description(c).split(' · ').slice(1).join(' · ')));title.title='Nominal forecast run time, not the download time. All times UTC.';}else title.textContent='No older run saved';h.append(title);}
   if(c){const m=document.createElement('div');m.className='metadata';m.textContent=`Valid ${short(c.valid_time)} · ${names[c.source]||c.source} · `;m.append(original(c));h.append(m);}
   p.append(h);
   if(mode!=='wipe'){const wrap=document.createElement('div');wrap.className=c?'image-wrap':'placeholder';if(c)wrap.append(image(c));else wrap.textContent='No previous forecast has been saved for this time yet.';p.append(wrap);}
