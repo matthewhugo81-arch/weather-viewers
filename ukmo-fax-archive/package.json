@@ -1,0 +1,1 @@
+{"name":"ukmo-fax-archive","version":"1.0.0","private":true,"scripts":{"collect":"node scripts/collect-online.cjs","test":"node scripts/test-online.cjs","build":"node scripts/build-viewer.cjs","validate":"node scripts/validate.cjs"},"dependencies":{"sharp":"0.35.5","tesseract.js":"7.0.0"}}

@@ -1,0 +1,123 @@
+{
+  "products": [
+    {
+      "source": "metbrief-nowster",
+      "product": "UKCpf000",
+      "lead_hours": 0,
+      "url": "https://bethyngalw.nowster.me.uk/charts/UKCpf000.png",
+      "enabled": true
+    },
+    {
+      "source": "metbrief-nowster",
+      "product": "UKCpf024",
+      "lead_hours": 24,
+      "url": "https://bethyngalw.nowster.me.uk/charts/UKCpf024.png",
+      "enabled": true
+    },
+    {
+      "source": "metbrief-nowster",
+      "product": "UKCpf036",
+      "lead_hours": 36,
+      "url": "https://bethyngalw.nowster.me.uk/charts/UKCpf036.png",
+      "enabled": true
+    },
+    {
+      "source": "metbrief-nowster",
+      "product": "UKCpf048",
+      "lead_hours": 48,
+      "url": "https://bethyngalw.nowster.me.uk/charts/UKCpf048.png",
+      "enabled": true
+    },
+    {
+      "source": "metbrief-nowster",
+      "product": "UKCpf060",
+      "lead_hours": 60,
+      "url": "https://bethyngalw.nowster.me.uk/charts/UKCpf060.png",
+      "enabled": true
+    },
+    {
+      "source": "metbrief-nowster",
+      "product": "UKCpf072",
+      "lead_hours": 72,
+      "url": "https://bethyngalw.nowster.me.uk/charts/UKCpf072.png",
+      "enabled": true
+    },
+    {
+      "source": "metbrief-nowster",
+      "product": "UKCpf084",
+      "lead_hours": 84,
+      "url": "https://bethyngalw.nowster.me.uk/charts/UKCpf084.png",
+      "enabled": true
+    },
+    {
+      "source": "metbrief-nowster",
+      "product": "UKCpf096",
+      "lead_hours": 96,
+      "url": "https://bethyngalw.nowster.me.uk/charts/UKCpf096.png",
+      "enabled": true
+    },
+    {
+      "source": "metbrief-nowster",
+      "product": "UKCpf120",
+      "lead_hours": 120,
+      "url": "https://bethyngalw.nowster.me.uk/charts/UKCpf120.png",
+      "enabled": true
+    },
+    {
+      "source": "vedur",
+      "product": "PPVA89_EGRR_0000",
+      "lead_hours": 0,
+      "url": "https://brunnur.vedur.is/flugkort/PPVA89_EGRR_0000.png",
+      "enabled": true
+    },
+    {
+      "source": "vedur",
+      "product": "PPVA89_EGRR_0600",
+      "lead_hours": 0,
+      "url": "https://brunnur.vedur.is/flugkort/PPVA89_EGRR_0600.png",
+      "enabled": true
+    },
+    {
+      "source": "vedur",
+      "product": "PPVA89_EGRR_1200",
+      "lead_hours": 0,
+      "url": "https://brunnur.vedur.is/flugkort/PPVA89_EGRR_1200.png",
+      "enabled": true
+    },
+    {
+      "source": "vedur",
+      "product": "PPVA89_EGRR_1800",
+      "lead_hours": 0,
+      "url": "https://brunnur.vedur.is/flugkort/PPVA89_EGRR_1800.png",
+      "enabled": true
+    },
+    {
+      "source": "vedur",
+      "product": "PPVE89_EGRR_0000",
+      "lead_hours": 24,
+      "url": "https://brunnur.vedur.is/flugkort/PPVE89_EGRR_0000.png",
+      "enabled": true
+    },
+    {
+      "source": "vedur",
+      "product": "PPVE89_EGRR_0600",
+      "lead_hours": 24,
+      "url": "https://brunnur.vedur.is/flugkort/PPVE89_EGRR_0600.png",
+      "enabled": true
+    },
+    {
+      "source": "vedur",
+      "product": "PPVE89_EGRR_1200",
+      "lead_hours": 24,
+      "url": "https://brunnur.vedur.is/flugkort/PPVE89_EGRR_1200.png",
+      "enabled": true
+    },
+    {
+      "source": "vedur",
+      "product": "PPVE89_EGRR_1800",
+      "lead_hours": 24,
+      "url": "https://brunnur.vedur.is/flugkort/PPVE89_EGRR_1800.png",
+      "enabled": true
+    }
+  ]
+}

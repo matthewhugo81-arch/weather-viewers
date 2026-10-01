@@ -1,0 +1,134 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>UKMO FAX Run Archive &amp; Comparison</title><style>
+:root{color-scheme:light;--navy:#112538;--ink:#243a4c;--muted:#607687;--line:#cad6dd;--teal:#006e73;--paper:#fff;--back:#eaf0f3}*{box-sizing:border-box}body{margin:0;background:var(--back);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,sans-serif}header{background:var(--navy);color:white;padding:25px 30px;display:flex;justify-content:space-between;align-items:center;border-bottom:4px solid #4eb5b4}.eyebrow{font-size:10px;letter-spacing:1.8px;color:#a8c6d5;margin:0 0 6px}.eyebrow span{padding:0 8px;color:#57bcbd}h1{font-size:25px;margin:0;font-weight:750}h1 span{font-size:20px;font-weight:400;color:#d8e5ed;margin-left:9px}.utc{text-align:right;color:#81d4ce;font:600 11px/1.6 ui-monospace,Consolas,monospace}.utc span{display:block;color:#b5c8d3;font-weight:400}main{padding:20px 25px;max-width:1900px;margin:auto}.controls{display:flex;align-items:flex-end;gap:14px;background:var(--paper);border:1px solid var(--line);padding:16px;border-radius:5px}label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6px;font-weight:700;flex:1}select,button{font:inherit;color:inherit}select{display:block;width:100%;margin-top:5px;background:#fff;border:1px solid #afc0cc;border-radius:3px;height:37px;padding:0 9px;font-size:13px;letter-spacing:0;max-width:100%;text-transform:none}button{cursor:pointer;border:1px solid #adbeca;background:#fff;border-radius:3px;padding:8px 13px;font-weight:600;white-space:nowrap}button:hover{background:#edf6f6}button:disabled{opacity:.35;cursor:default}button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #e6a629;outline-offset:2px}.valid-label{flex:1.5}.stepper{display:flex;gap:4px;margin-top:5px}.stepper select{margin:0}.stepper button{font-size:20px;padding:0 11px}.quiet{height:37px;font-size:12px;color:var(--muted)}.toolbar{display:flex;justify-content:space-between;align-items:center;margin:18px 0 12px;gap:10px}.modes{display:flex;gap:4px}.modes button{font-size:12px}.modes button[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:#fff}#count{font-size:12px;color:var(--muted);margin:0}.context{display:flex;justify-content:space-between;gap:10px;margin:0 0 10px;font-size:12px}.context strong{color:var(--teal)}.context span{color:var(--muted)}.panels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.panels.single{grid-template-columns:1fr}.panel{min-width:0;background:#fff;border:1px solid #bbcbd5;border-radius:4px;overflow:hidden}.panel-head{background:#f7fafb;border-bottom:1px solid var(--line);padding:11px 12px}.panel-label{color:var(--teal);font:700 10px ui-monospace,monospace;letter-spacing:.9px}.panel-head select{font-size:12px}.metadata{display:flex;justify-content:space-between;gap:8px;margin-top:8px;color:var(--muted);font-size:11px}.metadata a{white-space:nowrap}.image-wrap{min-height:180px;display:grid;place-items:center;background:#fff}.chart{display:block;width:100%;height:auto}.placeholder{min-height:220px;display:grid;place-content:center;text-align:center;padding:25px;color:var(--muted)}a{color:var(--teal)}.wipe-controls{margin-top:12px;background:white;border:1px solid var(--line);padding:14px;display:flex;align-items:center;gap:20px}.wipe-controls label{flex:0 0 145px}.wipe-controls input{flex:1;accent-color:var(--teal)}.wipe-controls p{flex:2;margin:0;font-size:12px;color:var(--muted)}.wipe-canvas{position:relative;background:white;margin-top:12px;border:1px solid var(--line);overflow:hidden}.wipe-canvas img{display:block;width:100%;height:auto}.wipe-canvas .overlay{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;clip-path:inset(0 0 0 50%)}.wipe-line{position:absolute;top:0;bottom:0;left:50%;width:2px;background:#00868b;pointer-events:none}#wipeWarning{font-size:12px;color:#845812}.inventory{background:white;border:1px solid var(--line);margin-top:20px;border-radius:4px}summary{cursor:pointer;padding:13px;font-size:12px;font-weight:650}summary span{font-weight:400;color:var(--muted);margin-left:8px}.table-scroll{overflow:auto;max-height:380px}table{border-collapse:collapse;width:100%;text-align:left;font:12px ui-monospace,Consolas,monospace}th,td{padding:9px 13px;border-top:1px solid #e1e9ee;white-space:nowrap}th{background:#f3f7f9}.notice,.empty{padding:24px;border:1px solid #c8b985;background:#fff9e9;color:#71551e}.empty{text-align:center;padding:70px 20px}footer{display:flex;justify-content:space-between;gap:25px;font-size:11px;color:var(--muted);margin-top:16px}footer a{margin-left:16px;white-space:nowrap}[hidden]{display:none!important}@media(min-width:1450px){.panels.four{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:850px){header{padding:20px;align-items:flex-start}h1 span{display:block;margin:3px 0 0;font-size:15px}.utc{max-width:140px}main{padding:14px}.controls{flex-wrap:wrap}.controls>label{flex:1 1 40%}.context{display:block}.context span{display:block;margin-top:3px}footer{display:block}footer a{margin:0 18px 0 0}.wipe-controls{flex-wrap:wrap}.wipe-controls p{flex-basis:100%}}@media(max-width:580px){.panels{grid-template-columns:1fr}.toolbar{display:block}#count{margin-top:10px}.controls{gap:10px;padding:12px}.utc{display:none}.modes button{padding:8px 10px}.metadata{flex-wrap:wrap}}
+:root .controls .valid-label{min-width:230px}
+@media(max-width:580px){.controls>.valid-label{flex-basis:100%;order:-1}}
+/* Compact, screen-fitted comparison and in-page guidance. */
+.help{background:#fff;border:1px solid var(--line);border-radius:4px;margin-bottom:14px}.help-body{padding:0 18px 16px;max-width:1100px}.help-body ol{padding-left:22px}.help-body li{margin:7px 0}.help-body p{font-size:13px;color:var(--ink)}#example{background:var(--teal);color:white}#exampleInfo{display:inline-block;font-size:12px;margin:8px;color:var(--muted)}.availability{background:#f5fafb;border-left:3px solid var(--teal);padding:10px 13px;margin:0 0 12px;font-size:13px}.wipe-canvas{max-width:100%;margin:10px auto 0}.wipe-controls{max-width:900px;margin:12px auto 0}.wipe-controls p{flex:1;font-size:11px}#wipeWarning{max-width:900px;margin:10px auto}.wipe-canvas:empty{display:none}.wipe-controls input{min-width:100px}.wipe-controls:has(input:disabled){opacity:.65}.panel-head select:disabled{color:var(--muted);background:#eef2f4}
+.run-title{font-size:15px;font-weight:650;margin:8px 0 0}.simple-rule{flex:1;margin:0;font-size:13px}.controls .valid-label{flex:2}.source-settings{position:relative;min-width:100px}.source-settings summary{padding:8px}.source-settings label{min-width:190px}.help{margin-top:18px}.wipe-controls label{flex-basis:175px}@media(max-width:650px){.controls .valid-label{flex-basis:100%}.simple-rule{flex-basis:70%}}
+/* Compact title bar: reclaim 38px vertically on desktop. */
+header{padding-top:6px;padding-bottom:6px}
+/* Align chart starts: fixed matching title rows for A text and B selector. */
+.panel-head{padding:8px 12px}
+.panel-head .run-title{height:32px;margin:5px 0 0;display:flex;align-items:center;line-height:1.2}
+.panel-head select{height:32px;margin-top:5px}
+.panel-head .metadata{margin-top:5px;min-height:16px}
+.image-wrap{align-items:start}
+/* Reduce vertical overhead above the comparison. */
+main{padding-top:10px}
+.controls{padding-top:10px;padding-bottom:10px}
+.toolbar{margin-top:10px;margin-bottom:8px}
+.context{margin-bottom:6px}
+.availability{padding-top:6px;padding-bottom:6px;margin-bottom:8px}
+header .eyebrow{margin-bottom:2px}
+/* Forecast navigation follows the layout buttons without shifting chart alignment. */
+.modes{flex-wrap:wrap;align-items:center}.period-navigation{display:inline-flex;gap:4px;margin-left:10px;padding-left:12px;border-left:1px solid var(--line)}
+@media(max-width:580px){.period-navigation{margin-left:0;padding-left:0;border-left:0;flex-basis:100%;margin-top:4px}}
+
+</style><script defer src="archive/manifest.js"></script></head><body>
+<header><div><p class="eyebrow">NORTH ATLANTIC &amp; EUROPE · ALL TIMES UTC</p><h1>UKMO FAX <span>Run Archive &amp; Comparison</span></h1></div><div class="utc" id="updated"></div></header>
+<main><section class="controls"><label class="valid-label">Forecast period — newest saved chart<select id="valid" aria-label="Forecast period"></select></label><p class="simple-rule"><strong>A = latest chart</strong><br>Includes 00, 06, 12 & 18Z charts · B = earlier run for the same valid time</p><details class="source-settings"><summary>Source</summary><label>Chart source<select id="source"></select></label></details></section>
+<section class="toolbar"><div class="modes" role="group" aria-label="Comparison mode"><button data-mode="2" aria-pressed="true">2-up</button><button data-mode="wipe" aria-pressed="false">Wipe / slider</button><button data-mode="1" aria-pressed="false">Single</button><button data-mode="4" aria-pressed="false">4-up</button><span class="period-navigation" role="group" aria-label="Forecast period navigation"><button id="previousPeriod" aria-label="Previous forecast period" title="Previous forecast period">← Previous</button><button id="nextPeriod" aria-label="Next forecast period" title="Next forecast period">Next →</button></span></div><span id="count"></span></section>
+<div class="context"><strong id="validTitle"></strong><span>Newest on the left · earlier forecasts on the right</span></div><p id="availability" class="availability" role="status"></p>
+<section id="panels" class="panels" aria-label="Chart comparison"></section>
+<section id="wipeArea" hidden><div class="wipe-controls"><label for="slider">Reveal previous forecast <output id="percent">50%</output></label><input id="slider" type="range" min="0" max="100" value="50"><p>0% = latest (A) · 100% = previous (B)</p></div><p id="wipeWarning" role="status"></p><div id="wipeCanvas" class="wipe-canvas"></div></section>
+<details class="help"><summary>How to use this page</summary><div class="help-body"><ol><li>Choose a <strong>forecast period</strong>, or use <strong>Previous / Next</strong> beside 4-up to move through the saved valid times. T+24 means 24 hours after that chart's run time. The date alongside it is when the forecast is valid.</li><li><strong>Chart A is automatic:</strong> it always shows the newest saved run for that valid time.</li><li><strong>Chart B starts with the immediately previous run.</strong> Its menu lists older runs from newest to oldest. Both charts forecast exactly the same valid time.</li></ol><p>The default combined view includes the Icelandic 00, 06, 12 and 18 UTC analyses (T+0) and T+24 forecasts, alongside the longer-range charts. These clock hours are cycle times, not T+6/T+12/T+18 forecast leads. An analysis can appear in A with earlier forecasts for that exact time in B once they have been saved.</p><p>Only one run saved? There is no earlier forecast to show yet. The hosted archive is collected hourly by GitHub once its workflow is enabled. Reload to see the latest published snapshot. For an offline copy only, run <strong>archive.bat</strong> to collect locally. Lead hours shown are the actual chart products; unavailable T+12 or T+18 products are not created.</p><p>Single shows A only. 4-up adds the next older runs after your B selection. Wipe uses the compact image frame; Open original provides full resolution.</p><button id="example">Show a period with previous runs</button><span id="exampleInfo"></span></div></details>
+<details class="inventory"><summary>Archive details <span id="inventoryCount"></span></summary><div class="table-scroll"><table><thead><tr><th>Valid UTC</th><th>Run UTC</th><th>Lead</th><th>Source</th><th>Downloaded UTC</th><th>Image</th></tr></thead><tbody id="rows"></tbody></table></div></details><p id="pending" class="notice" hidden></p>
+<footer><p>Original charts: Met Office · © Crown Copyright. Stored unchanged. Run time = valid time minus lead.</p><p><a href="https://www.metbrief.com/EGRRb.html#00">Metbrief</a><a href="https://brunnur.vedur.is/flugkort/">Icelandic Met Office</a><a href="README.md">Setup guide</a></p></footer></main><script>document.addEventListener("DOMContentLoaded",()=>{
+'use strict';
+(async () => {
+ const $=id=>document.getElementById(id);
+ const names={'metbrief-nowster':'Metbrief / Nowster',vedur:'Icelandic Met Office'};
+ const fmt=s=>s.replace('T',' ').replace(':00:00Z','Z');
+ const short=s=>new Date(s).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'UTC',hour12:false}).replace(',','')+'Z';
+ let archive=window.FAX_ARCHIVE||{charts:[],pending:[]};
+ // Hosted viewers request the current snapshot; offline opening still uses manifest.js.
+ if(location.protocol==='https:'||location.protocol==='http:'){
+  try{const response=await fetch('archive/manifest.json',{cache:'no-store',signal:AbortSignal.timeout(10000)});if(response.ok)archive=await response.json();}catch{/* Keep the last published companion snapshot available. */}
+ }
+ const charts=(archive.charts||[]).filter(c=>/^archive\/objects\/[a-z0-9_-]+\/[a-f0-9]{64}\.png$/.test(c.filename)&&Number.isFinite(Date.parse(c.issue_time))&&Date.parse(c.valid_time)-Date.parse(c.issue_time)===c.lead_hours*3600000);
+ let mode='2',chosenB='',groups=new Map();
+ function rebuild(){
+  groups=new Map();
+  // Merge valid times across sources. Distributor copies are not separate forecast runs.
+  // Prefer Nowster for equal runs, then the newest revision within that source.
+  charts.filter(c=>!$('source').value||c.source===$('source').value).sort((a,b)=>b.issue_time.localeCompare(a.issue_time)||(a.source==='metbrief-nowster'?0:1)-(b.source==='metbrief-nowster'?0:1)||b.download_time.localeCompare(a.download_time)).forEach(c=>{
+   if(!groups.has(c.valid_time))groups.set(c.valid_time,[]);
+   const g=groups.get(c.valid_time);if(!g.some(x=>x.issue_time===c.issue_time))g.push(c);
+  });
+  const old=$('valid').value;$('valid').replaceChildren();
+  [...groups.keys()].sort().forEach(v=>{const g=groups.get(v),a=g[0];$('valid').add(new Option(`${a.lead_hours===0?'Analysis · T+0':'T+'+a.lead_hours} · ${short(v)}${g.length>1?' · previous runs available':''}`,v));});
+  if(groups.has(old))$('valid').value=old;
+  else {const best=[...groups.entries()].sort((a,b)=>b[1].length-a[1].length)[0];if(best)$('valid').value=best[0];}
+  chosenB='';render();
+ }
+ function image(c,cls='chart'){
+  const i=document.createElement('img');i.className=cls;i.src=c.filename;i.alt=`${fmt(c.valid_time)} valid · run ${fmt(c.issue_time)} · T+${c.lead_hours}`;
+  i.onerror=()=>{$('wipeWarning').textContent='Image unavailable. Keep the archive folder alongside index.html.';};return i;
+ }
+ function original(c){const a=document.createElement('a');a.href=c.filename;a.target='_blank';a.rel='noopener';a.textContent='Open original ↗';return a;}
+ function description(c){return `Run ${short(c.issue_time)} · T+${c.lead_hours}`;}
+ function panel(c,index,older){
+  const p=document.createElement('article');p.className='panel';const h=document.createElement('div');h.className='panel-head';
+  const l=document.createElement('div');l.className='panel-label';l.textContent=index===0?'CHART A · LATEST SAVED':index===1?'CHART B · PREVIOUS RUN':`CHART ${String.fromCharCode(65+index)} · OLDER RUN`;h.append(l);
+  if(index===1){const s=document.createElement('select');s.setAttribute('aria-label','Chart B previous run');
+   if(!older.length){s.add(new Option('No previous run saved yet',''));s.disabled=true;}
+   older.forEach((x,i)=>s.add(new Option(`${i===0?'Previous run':`${i+1} runs back`} · ${description(x)}`,x.id)));
+   s.value=c?.id||'';s.onchange=()=>{chosenB=s.value;render();};h.append(s);
+  }else{const title=document.createElement('p');title.className='run-title';title.textContent=c?description(c):'No older run saved';h.append(title);}
+  if(c){const m=document.createElement('div');m.className='metadata';m.textContent=`Valid ${short(c.valid_time)} · ${names[c.source]||c.source} · `;m.append(original(c));h.append(m);}
+  p.append(h);
+  if(mode!=='wipe'){const wrap=document.createElement('div');wrap.className=c?'image-wrap':'placeholder';if(c)wrap.append(image(c));else wrap.textContent='No previous forecast has been saved for this time yet.';p.append(wrap);}
+  return p;
+ }
+ function slider(){const n=Number($('slider').value);$('percent').textContent=n+'%';const o=$('wipeCanvas').querySelector('.overlay'),l=$('wipeCanvas').querySelector('.wipe-line');if(o)o.style.clipPath=`inset(0 0 0 ${100-n}%)`;if(l)l.style.left=`${100-n}%`;}
+ function fit(){const img=$('wipeCanvas').querySelector('img');if(img?.naturalWidth)$('wipeCanvas').style.width=Math.min(900,$('wipeArea').clientWidth,innerHeight*.58*img.naturalWidth/img.naturalHeight)+'px';}
+ function wipe(a,b){
+  $('wipeCanvas').replaceChildren();$('wipeWarning').textContent='';$('slider').disabled=true;
+  if(mode!=='wipe')return;
+  if(!a||!b){$('wipeWarning').textContent='There is no previous run saved for this time yet.';return;}
+  if(a.source!==b.source){$('wipeWarning').textContent='These runs come from different image sources. Use 2-up to compare them without misaligning the maps.';return;}
+  const first=image(a),second=image(b,'overlay'),line=document.createElement('div');line.className='wipe-line';
+  const check=()=>{if(!first.naturalWidth||!second.naturalWidth)return;
+   if(first.naturalWidth!==second.naturalWidth||first.naturalHeight!==second.naturalHeight){$('wipeCanvas').replaceChildren();$('wipeWarning').textContent='Image layouts differ. Use 2-up to avoid a misleading overlay.';return;}
+   $('slider').disabled=false;fit();};
+  first.onload=check;second.onload=check;$('wipeCanvas').append(first,second,line);slider();check();
+ }
+ function render(){
+  const g=groups.get($('valid').value)||[],a=g[0],older=g.slice(1);
+  const b=older.find(c=>c.id===chosenB)||older[0];chosenB=b?.id||'';
+  const n=mode==='1'?1:mode==='4'?4:2;const bi=g.indexOf(b);
+  const selected=[a,b,...(bi>=0?g.slice(bi+1):[])];
+  $('panels').className='panels '+(n===1?'single':'');$('panels').replaceChildren();
+  for(let i=0;i<n;i++)$('panels').append(panel(selected[i],i,older));
+  $('validTitle').textContent=a?`VALID ${fmt(a.valid_time)}`:'No saved charts';
+  const period=$('valid');
+  $('previousPeriod').disabled=period.selectedIndex<=0;
+  $('nextPeriod').disabled=period.selectedIndex<0||period.selectedIndex>=period.options.length-1;
+  $('count').textContent=`${older.length} previous run${older.length===1?'':'s'} saved`;
+  $('availability').textContent=!a?'No charts are indexed. Run archive.bat, then reload.':b?`A: latest run ${short(a.issue_time)} (T+${a.lead_hours}). B: ${short(b.issue_time)} (T+${b.lead_hours}). Both valid ${short(a.valid_time)}.`:'Chart A is the latest saved forecast. No earlier run is archived for this valid time yet.';
+  $('wipeArea').hidden=mode!=='wipe';wipe(a,b);
+  $('rows').replaceChildren();g.forEach(c=>{const tr=document.createElement('tr');[fmt(c.valid_time),fmt(c.issue_time),'T+'+c.lead_hours,names[c.source]||c.source,fmt(c.download_time)].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.append(td);});const td=document.createElement('td');td.append(original(c));tr.append(td);$('rows').append(tr);});
+  const best=[...groups.entries()].sort((a,b)=>b[1].length-a[1].length)[0];$('example').disabled=!best||best[1].length<2;$('exampleInfo').textContent=best&&best[1].length>1?' '+short(best[0]):' No period has previous runs yet.';
+ }
+ $('source').add(new Option('Combined · all available times',''));
+ [...new Set(charts.map(c=>c.source))].sort().forEach(s=>$('source').add(new Option(names[s]||s,s)));
+ $('source').value='';
+ $('source').onchange=rebuild;$('valid').onchange=()=>{chosenB='';render();};
+ function stepPeriod(delta){
+  const period=$('valid'),next=period.selectedIndex+delta;
+  if(next<0||next>=period.options.length)return;
+  period.selectedIndex=next;chosenB='';render();
+ }
+ $('previousPeriod').onclick=()=>stepPeriod(-1);
+ $('nextPeriod').onclick=()=>stepPeriod(1);
+ document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll('[data-mode]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));render();});
+ $('example').onclick=()=>{const best=[...groups.entries()].sort((a,b)=>b[1].length-a[1].length)[0];if(best){$('valid').value=best[0];chosenB='';render();document.querySelector('.controls').scrollIntoView({behavior:'smooth'});}};
+ $('slider').oninput=slider;window.addEventListener('resize',fit);
+ $('updated').textContent=archive.updated_at?'Snapshot '+fmt(archive.updated_at):'Archive unavailable';$('inventoryCount').textContent=charts.length+' stored images';
+ if(archive.pending?.length){$('pending').hidden=false;$('pending').textContent=archive.pending.length+' chart(s) await date review. See the setup guide.';}
+ if(archive.collection_status?.download_failures){$('pending').hidden=false;$('pending').textContent+=' Some chart sources could not be downloaded at the last check; previously saved charts remain available.';}
+ if(Date.now()-Date.parse(archive.updated_at)>3*3600000){$('pending').hidden=false;$('pending').textContent+=' The archive has not been checked for over three hours. The online collector may need attention.';}
+ rebuild();
+})();
+
+});</script></body></html>
