@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-01T18:36:52Z",
+  "updated_at": "2026-10-01T20:14:00Z",
   "pending": [],
   "charts": [
     {
@@ -215,6 +215,21 @@
       "ocr_header": "Analysis chart valid 12 UTC THU 01 OCT 2026"
     },
     {
+      "id": "metbrief-nowster:UKCpf000:731f96a4b3f96b846fcb2bff3cb71cb452505a01dad17afaed874180cec591dc",
+      "issue_time": "2026-10-01T12:00:00Z",
+      "valid_time": "2026-10-01T12:00:00Z",
+      "lead_hours": 0,
+      "source": "metbrief-nowster",
+      "product": "UKCpf000",
+      "filename": "archive/objects/metbrief-nowster/731f96a4b3f96b846fcb2bff3cb71cb452505a01dad17afaed874180cec591dc.png",
+      "download_time": "2026-10-01T20:13:48Z",
+      "source_url": "https://bethyngalw.nowster.me.uk/charts/UKCpf000.png",
+      "sha256": "731f96a4b3f96b846fcb2bff3cb71cb452505a01dad17afaed874180cec591dc",
+      "metadata_method": "printed-header-ocr",
+      "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)",
+      "ocr_header": "Analysis chart valid 12 UTC THU 01 OCT 2026"
+    },
+    {
       "id": "vedur:PPVA89_EGRR_1200:de5e5f7733dd684df1e58c6028256131ea0c0456af419137e0c94a2aaf29cbdd",
       "issue_time": "2026-10-01T12:00:00Z",
       "valid_time": "2026-10-01T12:00:00Z",
@@ -225,6 +240,21 @@
       "download_time": "2026-10-01T16:25:56Z",
       "source_url": "https://brunnur.vedur.is/flugkort/PPVA89_EGRR_1200.png",
       "sha256": "de5e5f7733dd684df1e58c6028256131ea0c0456af419137e0c94a2aaf29cbdd",
+      "metadata_method": "printed-header-ocr",
+      "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)",
+      "ocr_header": "Analysis chart valid 12 UTC THU 01 OCT 2026"
+    },
+    {
+      "id": "vedur:PPVA89_EGRR_1200:a25ddbe3021232f04acf12d5d4bbe8493d70e9f9064b23b1a271344cc5e60c63",
+      "issue_time": "2026-10-01T12:00:00Z",
+      "valid_time": "2026-10-01T12:00:00Z",
+      "lead_hours": 0,
+      "source": "vedur",
+      "product": "PPVA89_EGRR_1200",
+      "filename": "archive/objects/vedur/a25ddbe3021232f04acf12d5d4bbe8493d70e9f9064b23b1a271344cc5e60c63.png",
+      "download_time": "2026-10-01T20:13:57Z",
+      "source_url": "https://brunnur.vedur.is/flugkort/PPVA89_EGRR_1200.png",
+      "sha256": "a25ddbe3021232f04acf12d5d4bbe8493d70e9f9064b23b1a271344cc5e60c63",
       "metadata_method": "printed-header-ocr",
       "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)",
       "ocr_header": "Analysis chart valid 12 UTC THU 01 OCT 2026"
@@ -242,6 +272,21 @@
       "sha256": "761d153e67dd6af406ae9bf52a5c4c2e4da4c75955ceb8798ad6a2de25be9104",
       "metadata_method": "printed-header-ocr",
       "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)"
+    },
+    {
+      "id": "vedur:PPVA89_EGRR_1800:50838586565944b31b0a6e698c941480d96bbfe3eca4fb0fa2b9d947166ede2a",
+      "issue_time": "2026-10-01T18:00:00Z",
+      "valid_time": "2026-10-01T18:00:00Z",
+      "lead_hours": 0,
+      "source": "vedur",
+      "product": "PPVA89_EGRR_1800",
+      "filename": "archive/objects/vedur/50838586565944b31b0a6e698c941480d96bbfe3eca4fb0fa2b9d947166ede2a.png",
+      "download_time": "2026-10-01T20:13:57Z",
+      "source_url": "https://brunnur.vedur.is/flugkort/PPVA89_EGRR_1800.png",
+      "sha256": "50838586565944b31b0a6e698c941480d96bbfe3eca4fb0fa2b9d947166ede2a",
+      "metadata_method": "printed-header-ocr",
+      "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)",
+      "ocr_header": "Analysis chart valid 18 UTC THU 01 OCT 2026"
     },
     {
       "id": "metbrief-nowster:UKCpf036:0a84cadc13451e30a51e2c89395f1844d8410b86511e687c393eaed7fd6b95f1",
@@ -589,11 +634,11 @@
     }
   ],
   "collection_status": {
-    "checked_at": "2026-10-01T18:36:52Z",
+    "checked_at": "2026-10-01T20:14:00Z",
     "products": 17,
     "download_failures": 0,
     "pending": 0,
     "errors": []
   },
-  "last_successful_collection": "2026-10-01T18:36:52Z"
+  "last_successful_collection": "2026-10-01T20:14:00Z"
 }
