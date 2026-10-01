@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-01T18:27:19Z",
+  "updated_at": "2026-10-01T18:36:52Z",
   "pending": [],
   "charts": [
     {
@@ -589,11 +589,11 @@
     }
   ],
   "collection_status": {
-    "checked_at": "2026-10-01T18:27:19Z",
+    "checked_at": "2026-10-01T18:36:52Z",
     "products": 17,
     "download_failures": 0,
     "pending": 0,
     "errors": []
   },
-  "last_successful_collection": "2026-10-01T18:27:19Z"
+  "last_successful_collection": "2026-10-01T18:36:52Z"
 }
