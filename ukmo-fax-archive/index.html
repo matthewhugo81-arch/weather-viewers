@@ -30,6 +30,11 @@ header .eyebrow{margin-bottom:2px}
 /* Clip blank printer margins visually, without editing archive images. */
 .image-wrap{overflow:hidden;min-height:0}.wipe-canvas .overlay{height:auto;bottom:auto}
 
+/* Explicit frame dimensions avoid percentage-margin grid collapse. */
+.image-wrap{display:block;position:relative;min-height:180px;overflow:hidden}.image-wrap .chart,.wipe-canvas img{position:absolute;top:0;left:0;width:100%;height:auto;margin:0!important}.image-failed{padding:25px;color:var(--muted)}.wipe-canvas{min-height:180px}
+
+.load-status{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:12px;background:#f7fafb;color:var(--muted);z-index:3;padding:20px;text-align:center}
+
 </style><script defer src="archive/manifest.js"></script></head><body>
 <header><div><p class="eyebrow">NORTH ATLANTIC &amp; EUROPE · ALL TIMES UTC</p><h1>UKMO FAX <span>Run Archive &amp; Comparison</span></h1></div><div class="utc" id="updated"></div></header>
 <main><section class="controls"><label class="valid-label">Valid date & time — latest and earlier forecasts<select id="valid" aria-label="Forecast period"></select></label><p class="simple-rule"><strong>A = latest chart</strong><br>Choose a valid time · B = an earlier forecast for that same time</p><details class="source-settings"><summary>Source</summary><label>Chart source<select id="source"></select></label></details></section>
@@ -77,13 +82,21 @@ header .eyebrow{margin-bottom:2px}
   chosenB='';render();
  }
  function image(c,cls='chart'){
-  const i=document.createElement('img');i.className=cls;i.src=c.filename;i.alt=`${fmt(c.valid_time)} valid · run ${fmt(c.issue_time)} · T+${c.lead_hours}`;
+  const i=document.createElement('img');i.className=cls;i.alt=fmt(c.valid_time)+' valid · run '+fmt(c.issue_time)+' · T+'+c.lead_hours;
+  let attempts=0,timer,statusBox;
+  const clearStatus=()=>{statusBox?.remove();statusBox=null;};
+  function status(message,retry=false){const frame=i.parentElement;if(!frame)return;clearStatus();const box=document.createElement('div');statusBox=box;box.className='load-status';box.setAttribute('role','status');box.textContent=message;if(retry){const button=document.createElement('button');button.textContent='Retry chart';button.onclick=()=>{attempts=0;start();};box.append(button);}frame.append(box);}
+  function failed(){clearTimeout(timer);if(!i.isConnected)return;if(attempts<2){start();return;}status('Chart could not load. ',true);}
+  function start(){clearTimeout(timer);attempts++;status(attempts===1?'Loading chart…':'Loading chart — retrying…');i.src=c.filename+(attempts>1?'?retry='+Date.now():'');timer=setTimeout(failed,20000);}
   i.addEventListener('load',()=>{
-   // Only remove known blank printer margins in the display; PNG bytes stay intact.
+   clearTimeout(timer);clearStatus();
    const top=c.source==='metbrief-nowster'&&i.naturalHeight===864?(i.naturalWidth===1076?70:i.naturalWidth===1179?36:0):0;
-   i.style.marginTop=top?(-100*top/i.naturalWidth)+'%':'0';
+   const frame=i.parentElement;if(frame){frame.style.aspectRatio=i.naturalWidth+'/'+(i.naturalHeight-top);frame.style.minHeight='0';}
+   i.style.transform=top?'translateY(-'+(100*top/i.naturalHeight)+'%)':'none';
   });
-  i.onerror=()=>{$('wipeWarning').textContent='Image unavailable. Keep the archive folder alongside index.html.';};return i;
+  i.addEventListener('error',failed);
+  // Attach handlers and the frame before starting even a cached image request.
+  setTimeout(()=>{if(i.isConnected)start();},0);return i;
  }
  function original(c){const a=document.createElement('a');a.href=c.filename;a.target='_blank';a.rel='noopener';a.textContent='Open original ↗';return a;}
  function description(c){const cycle=c.issue_time.slice(11,13)+"Z";const date=new Date(c.issue_time).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});return `${cycle} ${c.lead_hours===0?"analysis":"run"} · ${date} · T+${c.lead_hours}`;}
@@ -151,5 +164,6 @@ header .eyebrow{margin-bottom:2px}
  if(Date.now()-Date.parse(archive.updated_at)>3*3600000){$('pending').hidden=false;$('pending').textContent+=' The archive has not been checked for over three hours. The online collector may need attention.';}
  rebuild();
 })();
+
 
 });</script></body></html>
