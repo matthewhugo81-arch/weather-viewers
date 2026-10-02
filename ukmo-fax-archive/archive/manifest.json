@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-02T15:47:23Z",
+  "updated_at": "2026-10-02T17:56:15Z",
   "pending": [],
   "charts": [
     {
@@ -728,6 +728,36 @@
       "ocr_header": "Forecast chart (T+36) valid 12 UTC SAT 03 OCT 2026"
     },
     {
+      "id": "metbrief-nowster:UKCpf024:25dea8d949d4d4084d816f69a509c518d57693a3af1f5d3cbd0d5836653e4b29",
+      "issue_time": "2026-10-02T12:00:00Z",
+      "valid_time": "2026-10-03T12:00:00Z",
+      "lead_hours": 24,
+      "source": "metbrief-nowster",
+      "product": "UKCpf024",
+      "filename": "archive/objects/metbrief-nowster/25dea8d949d4d4084d816f69a509c518d57693a3af1f5d3cbd0d5836653e4b29.png",
+      "download_time": "2026-10-02T17:56:08Z",
+      "source_url": "https://bethyngalw.nowster.me.uk/charts/UKCpf024.png",
+      "sha256": "25dea8d949d4d4084d816f69a509c518d57693a3af1f5d3cbd0d5836653e4b29",
+      "metadata_method": "printed-header-ocr",
+      "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)",
+      "ocr_header": "Forecast chart (T+24) valid 12 UTC SAT 03 OCT 2026"
+    },
+    {
+      "id": "vedur:PPVE89_EGRR_1200:a8dc426d6070eff82b121862a508ca561ebaf2d13f38571b8543ac375383ce3b",
+      "issue_time": "2026-10-02T12:00:00Z",
+      "valid_time": "2026-10-03T12:00:00Z",
+      "lead_hours": 24,
+      "source": "vedur",
+      "product": "PPVE89_EGRR_1200",
+      "filename": "archive/objects/vedur/a8dc426d6070eff82b121862a508ca561ebaf2d13f38571b8543ac375383ce3b.png",
+      "download_time": "2026-10-02T17:56:15Z",
+      "source_url": "https://brunnur.vedur.is/flugkort/PPVE89_EGRR_1200.png",
+      "sha256": "a8dc426d6070eff82b121862a508ca561ebaf2d13f38571b8543ac375383ce3b",
+      "metadata_method": "printed-header-ocr",
+      "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)",
+      "ocr_header": "Forecast chart (T+24) valid 12 UTC SAT 03 OCT 2026"
+    },
+    {
       "id": "metbrief-nowster:UKCpf072:53f32b91f82d29bd88cad273ffda4a2ea8f0c28273eacf14e92c9809301923e2",
       "issue_time": "2026-10-01T00:00:00Z",
       "valid_time": "2026-10-04T00:00:00Z",
@@ -770,6 +800,21 @@
       "metadata_method": "printed-header-ocr",
       "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)",
       "ocr_header": "Forecast chart (T+48) valid 00 UTC SUN 04 OCT 2026"
+    },
+    {
+      "id": "metbrief-nowster:UKCpf036:5c144ed029337baed1625ae56ccab8b3619e3ad69c501b57e2fbdc472b7f8a92",
+      "issue_time": "2026-10-02T12:00:00Z",
+      "valid_time": "2026-10-04T00:00:00Z",
+      "lead_hours": 36,
+      "source": "metbrief-nowster",
+      "product": "UKCpf036",
+      "filename": "archive/objects/metbrief-nowster/5c144ed029337baed1625ae56ccab8b3619e3ad69c501b57e2fbdc472b7f8a92.png",
+      "download_time": "2026-10-02T17:56:09Z",
+      "source_url": "https://bethyngalw.nowster.me.uk/charts/UKCpf036.png",
+      "sha256": "5c144ed029337baed1625ae56ccab8b3619e3ad69c501b57e2fbdc472b7f8a92",
+      "metadata_method": "printed-header-ocr",
+      "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)",
+      "ocr_header": "Forecast chart (T+36) valid 00 UTC SUN 04 OCT 2026"
     },
     {
       "id": "metbrief-nowster:UKCpf120:bbb9389dc5ab44114ff0931a94de179c48c201b332b973e068aa472061d1a8e4",
@@ -844,6 +889,21 @@
       "ocr_header": "Forecast chart (T+60) valid 12 UTC SUN 04 OCT 2026"
     },
     {
+      "id": "metbrief-nowster:UKCpf048:e2c8ae79c4d52b2f6c5df83182355f78fd7c5d91335a80a5b4de1ca6e8c35609",
+      "issue_time": "2026-10-02T12:00:00Z",
+      "valid_time": "2026-10-04T12:00:00Z",
+      "lead_hours": 48,
+      "source": "metbrief-nowster",
+      "product": "UKCpf048",
+      "filename": "archive/objects/metbrief-nowster/e2c8ae79c4d52b2f6c5df83182355f78fd7c5d91335a80a5b4de1ca6e8c35609.png",
+      "download_time": "2026-10-02T17:56:09Z",
+      "source_url": "https://bethyngalw.nowster.me.uk/charts/UKCpf048.png",
+      "sha256": "e2c8ae79c4d52b2f6c5df83182355f78fd7c5d91335a80a5b4de1ca6e8c35609",
+      "metadata_method": "printed-header-ocr",
+      "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)",
+      "ocr_header": "Forecast chart (T+48) valid 12 UTC SUN 04 OCT 2026"
+    },
+    {
       "id": "metbrief-nowster:UKCpf072:88271b857c13822616e05e8e9e46e77828ece6acb263b515bd1ff84d0232a46b",
       "issue_time": "2026-10-02T00:00:00Z",
       "valid_time": "2026-10-05T00:00:00Z",
@@ -857,6 +917,21 @@
       "metadata_method": "printed-header-ocr",
       "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)",
       "ocr_header": "Forecast chart (T+72) valid 00 UTC MON 05 OCT 2026"
+    },
+    {
+      "id": "metbrief-nowster:UKCpf060:e2abecc85ba18b07c3e4540c97ac42101188a6d27f10e363bf14ae267ca0a4a4",
+      "issue_time": "2026-10-02T12:00:00Z",
+      "valid_time": "2026-10-05T00:00:00Z",
+      "lead_hours": 60,
+      "source": "metbrief-nowster",
+      "product": "UKCpf060",
+      "filename": "archive/objects/metbrief-nowster/e2abecc85ba18b07c3e4540c97ac42101188a6d27f10e363bf14ae267ca0a4a4.png",
+      "download_time": "2026-10-02T17:56:09Z",
+      "source_url": "https://bethyngalw.nowster.me.uk/charts/UKCpf060.png",
+      "sha256": "e2abecc85ba18b07c3e4540c97ac42101188a6d27f10e363bf14ae267ca0a4a4",
+      "metadata_method": "printed-header-ocr",
+      "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)",
+      "ocr_header": "Forecast chart (T+60) valid 00 UTC MON 05 OCT 2026"
     },
     {
       "id": "metbrief-nowster:UKCpf120:db1766fb9aff81c8d7a8d5c952e8b4a31a93671c93739cfc542b0ed78d9f362a",
@@ -903,6 +978,21 @@
       "ocr_header": "Forecast chart (T+84) valid 12 UTC MON 05 OCT 2026"
     },
     {
+      "id": "metbrief-nowster:UKCpf072:56564fe415b7e359506528f8e036041f8d4853d5356785dea81dc5750c85edcb",
+      "issue_time": "2026-10-02T12:00:00Z",
+      "valid_time": "2026-10-05T12:00:00Z",
+      "lead_hours": 72,
+      "source": "metbrief-nowster",
+      "product": "UKCpf072",
+      "filename": "archive/objects/metbrief-nowster/56564fe415b7e359506528f8e036041f8d4853d5356785dea81dc5750c85edcb.png",
+      "download_time": "2026-10-02T17:56:09Z",
+      "source_url": "https://bethyngalw.nowster.me.uk/charts/UKCpf072.png",
+      "sha256": "56564fe415b7e359506528f8e036041f8d4853d5356785dea81dc5750c85edcb",
+      "metadata_method": "printed-header-ocr",
+      "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)",
+      "ocr_header": "Forecast chart (T+72) valid 12 UTC MON 05 OCT 2026"
+    },
+    {
       "id": "metbrief-nowster:UKCpf120:cf01861bb3a5726083cc414ddab10b9d5bc6decb92ac6b4ae44acafd5e5229dd",
       "issue_time": "2026-10-01T12:00:00Z",
       "valid_time": "2026-10-06T12:00:00Z",
@@ -919,11 +1009,11 @@
     }
   ],
   "collection_status": {
-    "checked_at": "2026-10-02T15:47:23Z",
+    "checked_at": "2026-10-02T17:56:15Z",
     "products": 17,
     "download_failures": 0,
     "pending": 0,
     "errors": []
   },
-  "last_successful_collection": "2026-10-02T15:47:23Z"
+  "last_successful_collection": "2026-10-02T17:56:15Z"
 }
