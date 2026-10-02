@@ -1,7 +1,7 @@
 name: UKMO FAX online archive
 on:
   schedule:
-    - cron: '17 * * * *'
+    - cron: '7,27,47 * * * *'
   workflow_dispatch:
   push:
     branches: [main]
@@ -113,3 +113,4 @@ jobs:
         run: |
           echo 'Some downloads or date readings need attention; successful captures were saved and published.' >&2
           exit 1
+
