@@ -7,7 +7,7 @@
  let archive=window.FAX_ARCHIVE||{charts:[],pending:[]};
  // Hosted viewers request the current snapshot; offline opening still uses manifest.js.
  if(location.protocol==='https:'||location.protocol==='http:'){
-  try{const response=await fetch('archive/manifest.json',{cache:'no-store',signal:AbortSignal.timeout(10000)});if(response.ok)archive=await response.json();}catch{/* Keep the last published companion snapshot available. */}
+  try{const response=await fetch('archive/manifest.json?check='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(10000)});if(response.ok)archive=await response.json();}catch{/* Keep the last published companion snapshot available. */}
  }
  const charts=(archive.charts||[]).filter(c=>/^archive\/objects\/[a-z0-9_-]+\/[a-f0-9]{64}\.png$/.test(c.filename)&&Number.isFinite(Date.parse(c.issue_time))&&Date.parse(c.valid_time)-Date.parse(c.issue_time)===c.lead_hours*3600000);
  let mode='2',chosenB='',groups=new Map();
@@ -19,6 +19,7 @@
    if(!groups.has(c.valid_time))groups.set(c.valid_time,[]);
    const g=groups.get(c.valid_time);if(!g.some(x=>x.issue_time===c.issue_time))g.push(c);
   });
+  for(const [v,g] of groups)groups.set(v,g.slice(0,4));
   const old=$('valid').value;$('valid').replaceChildren();
   const day=(archive.updated_at||new Date().toISOString()).slice(0,10);
   const current=document.createElement('optgroup');current.label='Current dates · '+day+' onwards (UTC)';
@@ -33,6 +34,13 @@
   if(groups.has(old))$('valid').value=old;
   else if(current.children.length)$('valid').value=current.children[0].value;
   chosenB='';render();
+ }
+ const warmImages=new Map();
+ function preloadNearby(){
+  const times=[...groups.keys()].sort(),pos=times.indexOf($('valid').value);
+  const candidates=[...(groups.get(times[pos])||[]),...(groups.get(times[pos+1])||[]).slice(0,2),...(groups.get(times[pos-1])||[]).slice(0,2)];
+  for(const c of candidates){if(warmImages.has(c.filename))continue;const img=new Image();img.decoding='async';img.fetchPriority='low';img.src=c.filename;warmImages.set(c.filename,img);}
+  while(warmImages.size>16)warmImages.delete(warmImages.keys().next().value);
  }
  function image(c,cls='chart'){
   const i=document.createElement('img');i.className=cls;i.alt=fmt(c.valid_time)+' valid · run '+fmt(c.issue_time)+' · T+'+c.lead_hours;
@@ -93,7 +101,7 @@
   $('nextPeriod').disabled=position<0||position>=timeline.length-1;
   $('count').textContent=`${older.length} previous run${older.length===1?'':'s'} saved`;
   $('availability').textContent=!a?'No charts are indexed. Run archive.bat, then reload.':b?`A: latest run ${short(a.issue_time)} (T+${a.lead_hours}). B: ${short(b.issue_time)} (T+${b.lead_hours}). Both valid ${short(a.valid_time)}.`:'Chart A is the latest saved forecast. No earlier run is archived for this valid time yet.';
-  $('wipeArea').hidden=mode!=='wipe';wipe(a,b);
+  $('wipeArea').hidden=mode!=='wipe';wipe(a,b);setTimeout(preloadNearby,250);
   $('rows').replaceChildren();g.forEach(c=>{const tr=document.createElement('tr');[fmt(c.valid_time),fmt(c.issue_time),'T+'+c.lead_hours,names[c.source]||c.source,fmt(c.download_time)].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.append(td);});const td=document.createElement('td');td.append(original(c));tr.append(td);$('rows').append(tr);});
   const best=[...groups.entries()].sort((a,b)=>b[1].length-a[1].length)[0];$('example').disabled=!best||best[1].length<2;$('exampleInfo').textContent=best&&best[1].length>1?' '+short(best[0]):' No period has previous runs yet.';
  }
@@ -116,7 +124,7 @@
  if(archive.collection_status?.download_failures){$('pending').hidden=false;$('pending').textContent+=' Some chart sources could not be downloaded at the last check; previously saved charts remain available.';}
  if(Date.now()-Date.parse(archive.updated_at)>3*3600000){$('pending').hidden=false;$('pending').textContent+=' The archive has not been checked for over three hours. The online collector may need attention.';}
  rebuild();
- function freshness(){const hours=(Date.now()-Date.parse(archive.updated_at))/3600000;const el=$('freshness');el.textContent=(hours>2?'Archive behind: ':'Archive last checked: ')+short(archive.updated_at)+(hours>2?' — '+Math.floor(hours)+' hours ago. Charts below are saved forecasts; newer source charts may be available.':' · latest saved charts shown.');el.style.background=hours>2?'#fff1d6':'';}
+ function freshness(){const hours=(Date.now()-Date.parse(archive.updated_at))/3600000;const el=$('freshness');el.textContent=(hours>0.75?'Archive behind: ':'Archive last checked: ')+short(archive.updated_at)+(hours>0.75?' — '+Math.floor(hours*60)+' minutes ago. Charts below are saved forecasts; newer source charts may be available.':' · saved charts, not a live source feed.');el.style.background=hours>0.75?'#fff1d6':'';}
  freshness();setInterval(freshness,60000);
  if(location.protocol==='https:'||location.protocol==='http:')setInterval(async()=>{try{const r=await fetch('archive/manifest.json?refresh='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(10000)});if(r.ok&&(await r.json()).updated_at!==archive.updated_at)location.reload();}catch{}},300000);
 })();
