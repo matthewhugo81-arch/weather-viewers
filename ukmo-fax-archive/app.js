@@ -122,18 +122,7 @@
  $('updated').textContent=archive.updated_at?'Snapshot '+fmt(archive.updated_at):'Archive unavailable';$('inventoryCount').textContent=charts.length+' stored images';
  if(archive.pending?.length){$('pending').hidden=false;$('pending').textContent=archive.pending.length+' chart(s) await date review. See the setup guide.';}
  if(archive.collection_status?.download_failures){$('pending').hidden=false;$('pending').textContent+=' Some chart sources could not be downloaded at the last check; previously saved charts remain available.';}
- if(Date.now()-Date.parse(archive.updated_at)>3*3600000){$('pending').hidden=false;$('pending').textContent+=' The archive has not been checked for over three hours. The online collector may need attention.';}
  rebuild();
- function freshness(){
- const checked=archive.collection_status?.checked_at||archive.updated_at;
- const minutes=Math.max(0,Math.floor((Date.now()-Date.parse(checked))/60000));
- const failed=archive.collection_status?.download_failures||0,pending=archive.pending?.length||0;
- const overdue=!Number.isFinite(minutes)||minutes>45,el=$('freshness');
- const state=failed||pending?'Source check incomplete':overdue?'Source check overdue':'Sources last checked';
- el.textContent=state+': '+short(checked)+(Number.isFinite(minutes)?' · '+minutes+' minutes ago. ':' · ')+(failed||pending?'Some source charts could not be downloaded or dated. Saved charts remain available.':overdue?'The automatic check is delayed; this does not confirm that newer charts exist.':'All configured sources checked. Charts update when new runs are published.');
- el.style.background=failed||pending||overdue?'#fff1d6':'';
- }
- freshness();setInterval(freshness,60000);
  if(location.protocol==='https:'||location.protocol==='http:')setInterval(async()=>{try{const r=await fetch('archive/manifest.json?refresh='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(10000)});if(r.ok&&(await r.json()).updated_at!==archive.updated_at)location.reload();}catch{}},300000);
 })();
 

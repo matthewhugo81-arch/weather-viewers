@@ -37,7 +37,7 @@ header .eyebrow{margin-bottom:2px}
 
 </style><script defer src="archive/manifest.js"></script></head><body>
 <header><div><p class="eyebrow">NORTH ATLANTIC &amp; EUROPE · ALL TIMES UTC</p><h1>UKMO FAX <span>Run Archive &amp; Comparison</span></h1></div><div class="utc" id="updated"></div></header>
-<main><p id="freshness" class="availability" role="status"></p><section class="controls"><label class="valid-label">Valid date & time — latest and earlier forecasts<select id="valid" aria-label="Forecast period"></select></label><p class="simple-rule"><strong>A = latest chart</strong><br>Choose a valid time · B = an earlier forecast for that same time</p><details class="source-settings"><summary>Source</summary><label>Chart source<select id="source"></select></label></details></section>
+<main><section class="controls"><label class="valid-label">Valid date & time — latest and earlier forecasts<select id="valid" aria-label="Forecast period"></select></label><p class="simple-rule"><strong>A = latest chart</strong><br>Choose a valid time · B = an earlier forecast for that same time</p><details class="source-settings"><summary>Source</summary><label>Chart source<select id="source"></select></label></details></section>
 <section class="toolbar"><div class="modes" role="group" aria-label="Comparison mode"><button data-mode="2" aria-pressed="true">2-up</button><button data-mode="wipe" aria-pressed="false">Wipe / slider</button><button data-mode="1" aria-pressed="false">Single</button><button data-mode="4" aria-pressed="false">4-up</button><span class="period-navigation" role="group" aria-label="Forecast period navigation"><button id="previousPeriod" aria-label="Previous forecast period" title="Previous forecast period">← Previous</button><button id="nextPeriod" aria-label="Next forecast period" title="Next forecast period">Next →</button></span></div><span id="count"></span></section>
 <div class="context"><strong id="validTitle"></strong><span>Newest on the left · earlier forecasts on the right</span></div><p id="availability" class="availability" role="status"></p>
 <section id="panels" class="panels" aria-label="Chart comparison"></section>
@@ -169,18 +169,7 @@ header .eyebrow{margin-bottom:2px}
  $('updated').textContent=archive.updated_at?'Snapshot '+fmt(archive.updated_at):'Archive unavailable';$('inventoryCount').textContent=charts.length+' stored images';
  if(archive.pending?.length){$('pending').hidden=false;$('pending').textContent=archive.pending.length+' chart(s) await date review. See the setup guide.';}
  if(archive.collection_status?.download_failures){$('pending').hidden=false;$('pending').textContent+=' Some chart sources could not be downloaded at the last check; previously saved charts remain available.';}
- if(Date.now()-Date.parse(archive.updated_at)>3*3600000){$('pending').hidden=false;$('pending').textContent+=' The archive has not been checked for over three hours. The online collector may need attention.';}
  rebuild();
- function freshness(){
- const checked=archive.collection_status?.checked_at||archive.updated_at;
- const minutes=Math.max(0,Math.floor((Date.now()-Date.parse(checked))/60000));
- const failed=archive.collection_status?.download_failures||0,pending=archive.pending?.length||0;
- const overdue=!Number.isFinite(minutes)||minutes>45,el=$('freshness');
- const state=failed||pending?'Source check incomplete':overdue?'Source check overdue':'Sources last checked';
- el.textContent=state+': '+short(checked)+(Number.isFinite(minutes)?' · '+minutes+' minutes ago. ':' · ')+(failed||pending?'Some source charts could not be downloaded or dated. Saved charts remain available.':overdue?'The automatic check is delayed; this does not confirm that newer charts exist.':'All configured sources checked. Charts update when new runs are published.');
- el.style.background=failed||pending||overdue?'#fff1d6':'';
- }
- freshness();setInterval(freshness,60000);
  if(location.protocol==='https:'||location.protocol==='http:')setInterval(async()=>{try{const r=await fetch('archive/manifest.json?refresh='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(10000)});if(r.ok&&(await r.json()).updated_at!==archive.updated_at)location.reload();}catch{}},300000);
 })();
 
