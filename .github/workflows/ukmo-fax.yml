@@ -39,6 +39,9 @@ jobs:
         continue-on-error: true
         working-directory: ukmo-fax-archive
         run: node scripts/collect-online.cjs
+      - name: Retain four runs per valid time and seven days of past charts
+        working-directory: ukmo-fax-archive
+        run: node scripts/retain-archive.cjs
       - name: Validate saved archive
         working-directory: ukmo-fax-archive
         run: node scripts/validate.cjs
@@ -113,4 +116,5 @@ jobs:
         run: |
           echo 'Some downloads or date readings need attention; successful captures were saved and published.' >&2
           exit 1
+
 

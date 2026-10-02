@@ -33,3 +33,7 @@ The Node dependencies are pinned in package.json and pnpm-lock.yaml. Run `pnpm i
 The hourly workflow, rather than Windows Task Scheduler, is the normal online collection mechanism. Keep the whole `archive` directory and manifest when moving or restoring this site.
 
 References: [GitHub schedules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule), [Pages build API](https://docs.github.com/en/rest/pages/pages#request-a-github-pages-build).
+
+## Active archive retention
+Each online collection retains the newest four distinct issue times per valid time, preferring Metbrief/Nowster for duplicate source copies, then the latest revision from that source. Valid times older than seven days (UTC, rolling 168 hours) are removed. Future valid times remain. Pending OCR reviews are preserved. Unreferenced PNG files are removed from the active archive. Git commit history and existing backup artifacts retain earlier files: this policy does not rewrite history or cap total Git repository storage. Local PowerShell collection does not apply this online retention step automatically; with Node installed, run node scripts/retain-archive.cjs after local collection.
+
