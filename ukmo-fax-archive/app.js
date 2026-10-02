@@ -20,17 +20,39 @@
    const g=groups.get(c.valid_time);if(!g.some(x=>x.issue_time===c.issue_time))g.push(c);
   });
   const old=$('valid').value;$('valid').replaceChildren();
-  [...groups.keys()].sort().forEach(v=>{const g=groups.get(v),a=g[0];$('valid').add(new Option(`${a.lead_hours===0?'Analysis · T+0':'T+'+a.lead_hours} · ${short(v)}${g.length>1?' · previous runs available':''}`,v));});
+  const day=(archive.updated_at||new Date().toISOString()).slice(0,10);
+  const current=document.createElement('optgroup');current.label='Current dates · '+day+' onwards (UTC)';
+  const history=document.createElement('optgroup');history.label='Earlier dates · archived charts';
+  [...groups.keys()].sort().forEach(v=>{
+   const g=groups.get(v),a=g[0],leads=[...new Set(g.slice(1).map(c=>'T+'+c.lead_hours))];
+   const label=short(v)+' · '+(a.lead_hours===0?'Analysis':'Latest T+'+a.lead_hours+' · run '+short(a.issue_time))+(leads.length?' · earlier: '+leads.join(', '):'');
+   (v.slice(0,10)>=day?current:history).append(new Option(label,v));
+  });
+  if(current.children.length)$('valid').append(current);
+  if(history.children.length)$('valid').append(history);
   if(groups.has(old))$('valid').value=old;
-  else {const best=[...groups.entries()].sort((a,b)=>b[1].length-a[1].length)[0];if(best)$('valid').value=best[0];}
+  else if(current.children.length)$('valid').value=current.children[0].value;
   chosenB='';render();
  }
  function image(c,cls='chart'){
-  const i=document.createElement('img');i.className=cls;i.src=c.filename;i.alt=`${fmt(c.valid_time)} valid · run ${fmt(c.issue_time)} · T+${c.lead_hours}`;
-  i.onerror=()=>{$('wipeWarning').textContent='Image unavailable. Keep the archive folder alongside index.html.';};return i;
+  const i=document.createElement('img');i.className=cls;i.alt=fmt(c.valid_time)+' valid · run '+fmt(c.issue_time)+' · T+'+c.lead_hours;
+  let attempts=0,timer,statusBox;
+  const clearStatus=()=>{statusBox?.remove();statusBox=null;};
+  function status(message,retry=false){const frame=i.parentElement;if(!frame)return;clearStatus();const box=document.createElement('div');statusBox=box;box.className='load-status';box.setAttribute('role','status');box.textContent=message;if(retry){const button=document.createElement('button');button.textContent='Retry chart';button.onclick=()=>{attempts=0;start();};box.append(button);}frame.append(box);}
+  function failed(){clearTimeout(timer);if(!i.isConnected)return;if(attempts<2){start();return;}status('Chart could not load. ',true);}
+  function start(){clearTimeout(timer);attempts++;status(attempts===1?'Loading chart…':'Loading chart — retrying…');i.src=c.filename+(attempts>1?'?retry='+Date.now():'');timer=setTimeout(failed,20000);}
+  i.addEventListener('load',()=>{
+   clearTimeout(timer);clearStatus();
+   const top=c.source==='metbrief-nowster'&&i.naturalHeight===864?(i.naturalWidth===1076?70:i.naturalWidth===1179?36:0):0;
+   const frame=i.parentElement;if(frame){frame.style.aspectRatio=i.naturalWidth+'/'+(i.naturalHeight-top);frame.style.minHeight='0';}
+   i.style.transform=top?'translateY(-'+(100*top/i.naturalHeight)+'%)':'none';
+  });
+  i.addEventListener('error',failed);
+  // Attach handlers and the frame before starting even a cached image request.
+  setTimeout(()=>{if(i.isConnected)start();},0);return i;
  }
  function original(c){const a=document.createElement('a');a.href=c.filename;a.target='_blank';a.rel='noopener';a.textContent='Open original ↗';return a;}
- function description(c){return `Run ${short(c.issue_time)} · T+${c.lead_hours}`;}
+ function description(c){const cycle=c.issue_time.slice(11,13)+"Z";const date=new Date(c.issue_time).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});return `${cycle} ${c.lead_hours===0?"analysis":"run"} · ${date} · T+${c.lead_hours}`;}
  function panel(c,index,older){
   const p=document.createElement('article');p.className='panel';const h=document.createElement('div');h.className='panel-head';
   const l=document.createElement('div');l.className='panel-label';l.textContent=index===0?'CHART A · LATEST SAVED':index===1?'CHART B · PREVIOUS RUN':`CHART ${String.fromCharCode(65+index)} · OLDER RUN`;h.append(l);
@@ -38,7 +60,7 @@
    if(!older.length){s.add(new Option('No previous run saved yet',''));s.disabled=true;}
    older.forEach((x,i)=>s.add(new Option(`${i===0?'Previous run':`${i+1} runs back`} · ${description(x)}`,x.id)));
    s.value=c?.id||'';s.onchange=()=>{chosenB=s.value;render();};h.append(s);
-  }else{const title=document.createElement('p');title.className='run-title';title.textContent=c?description(c):'No older run saved';h.append(title);}
+  }else{const title=document.createElement('p');title.className='run-title';if(c){const badge=document.createElement('strong');badge.className='cycle-badge';badge.textContent=c.issue_time.slice(11,13)+'Z '+(c.lead_hours===0?'ANALYSIS':'RUN');title.append(badge,document.createTextNode(description(c).split(' · ').slice(1).join(' · ')));title.title='Nominal forecast run time, not the download time. All times UTC.';}else title.textContent='No older run saved';h.append(title);}
   if(c){const m=document.createElement('div');m.className='metadata';m.textContent=`Valid ${short(c.valid_time)} · ${names[c.source]||c.source} · `;m.append(original(c));h.append(m);}
   p.append(h);
   if(mode!=='wipe'){const wrap=document.createElement('div');wrap.className=c?'image-wrap':'placeholder';if(c)wrap.append(image(c));else wrap.textContent='No previous forecast has been saved for this time yet.';p.append(wrap);}
@@ -66,8 +88,9 @@
   for(let i=0;i<n;i++)$('panels').append(panel(selected[i],i,older));
   $('validTitle').textContent=a?`VALID ${fmt(a.valid_time)}`:'No saved charts';
   const period=$('valid');
-  $('previousPeriod').disabled=period.selectedIndex<=0;
-  $('nextPeriod').disabled=period.selectedIndex<0||period.selectedIndex>=period.options.length-1;
+  const timeline=[...groups.keys()].sort(),position=timeline.indexOf(period.value);
+  $('previousPeriod').disabled=position<=0;
+  $('nextPeriod').disabled=position<0||position>=timeline.length-1;
   $('count').textContent=`${older.length} previous run${older.length===1?'':'s'} saved`;
   $('availability').textContent=!a?'No charts are indexed. Run archive.bat, then reload.':b?`A: latest run ${short(a.issue_time)} (T+${a.lead_hours}). B: ${short(b.issue_time)} (T+${b.lead_hours}). Both valid ${short(a.valid_time)}.`:'Chart A is the latest saved forecast. No earlier run is archived for this valid time yet.';
   $('wipeArea').hidden=mode!=='wipe';wipe(a,b);
@@ -79,9 +102,9 @@
  $('source').value='';
  $('source').onchange=rebuild;$('valid').onchange=()=>{chosenB='';render();};
  function stepPeriod(delta){
-  const period=$('valid'),next=period.selectedIndex+delta;
+  const period=$('valid'),timeline=[...groups.keys()].sort(),next=timeline.indexOf(period.value)+delta;
   if(next<0||next>=period.options.length)return;
-  period.selectedIndex=next;chosenB='';render();
+  period.value=timeline[next];chosenB='';render();
  }
  $('previousPeriod').onclick=()=>stepPeriod(-1);
  $('nextPeriod').onclick=()=>stepPeriod(1);
@@ -93,4 +116,8 @@
  if(archive.collection_status?.download_failures){$('pending').hidden=false;$('pending').textContent+=' Some chart sources could not be downloaded at the last check; previously saved charts remain available.';}
  if(Date.now()-Date.parse(archive.updated_at)>3*3600000){$('pending').hidden=false;$('pending').textContent+=' The archive has not been checked for over three hours. The online collector may need attention.';}
  rebuild();
+ function freshness(){const hours=(Date.now()-Date.parse(archive.updated_at))/3600000;const el=$('freshness');el.textContent=(hours>2?'Archive behind: ':'Archive last checked: ')+short(archive.updated_at)+(hours>2?' — '+Math.floor(hours)+' hours ago. Charts below are saved forecasts; newer source charts may be available.':' · latest saved charts shown.');el.style.background=hours>2?'#fff1d6':'';}
+ freshness();setInterval(freshness,60000);
+ if(location.protocol==='https:'||location.protocol==='http:')setInterval(async()=>{try{const r=await fetch('archive/manifest.json?refresh='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(10000)});if(r.ok&&(await r.json()).updated_at!==archive.updated_at)location.reload();}catch{}},300000);
 })();
+

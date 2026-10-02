@@ -22,3 +22,14 @@ header .eyebrow{margin-bottom:2px}
 /* Forecast navigation follows the layout buttons without shifting chart alignment. */
 .modes{flex-wrap:wrap;align-items:center}.period-navigation{display:inline-flex;gap:4px;margin-left:10px;padding-left:12px;border-left:1px solid var(--line)}
 @media(max-width:580px){.period-navigation{margin-left:0;padding-left:0;border-left:0;flex-basis:100%;margin-top:4px}}
+
+/* Prominent UTC run cycle, retaining the matched 32px panel title rows. */
+.cycle-badge{display:inline-block;background:var(--navy);color:#fff;border-radius:3px;padding:4px 7px;font:700 13px/1.2 ui-monospace,Consolas,monospace;white-space:nowrap}.panel-head .run-title{gap:9px;font-size:14px}.panel-head select{font-weight:650}
+
+/* Clip blank printer margins visually, without editing archive images. */
+.image-wrap{overflow:hidden;min-height:0}.wipe-canvas .overlay{height:auto;bottom:auto}
+
+/* Explicit frame dimensions avoid percentage-margin grid collapse. */
+.image-wrap{display:block;position:relative;min-height:180px;overflow:hidden}.image-wrap .chart,.wipe-canvas img{position:absolute;top:0;left:0;width:100%;height:auto;margin:0!important}.image-failed{padding:25px;color:var(--muted)}.wipe-canvas{min-height:180px}
+
+.load-status{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:12px;background:#f7fafb;color:var(--muted);z-index:3;padding:20px;text-align:center}
