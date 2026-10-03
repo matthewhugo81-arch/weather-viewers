@@ -89,6 +89,7 @@
   first.onload=check;second.onload=check;$('wipeCanvas').append(first,second,line);slider();check();
  }
  function render(){
+  document.body.classList.toggle('single-view',mode==='1');
   const g=groups.get($('valid').value)||[],a=g[0],older=g.slice(1);
   const b=older.find(c=>c.id===chosenB)||older[0];chosenB=b?.id||'';
   const n=mode==='1'?1:mode==='4'?4:2;const bi=g.indexOf(b);

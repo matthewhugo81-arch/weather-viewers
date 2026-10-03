@@ -45,6 +45,11 @@ header{padding-top:4px;padding-bottom:4px}header .eyebrow{font-size:9px;line-hei
 .toolbar{justify-content:flex-start;flex-wrap:wrap;gap:6px 10px;margin:7px 0 6px}.toolbar .modes{flex-shrink:0}.toolbar .pen-tools{margin:0;padding-left:12px;border-left:1px solid var(--line);min-height:35px;gap:6px}.toolbar #count{margin-left:auto;white-space:nowrap}.toolbar #penHint{max-width:240px;font-size:11px;line-height:1.25}.thickness-guide{margin:6px 0}.thickness-guide summary{padding-top:5px;padding-bottom:5px}
 @media(max-width:1200px){.toolbar #penHint{max-width:150px}.toolbar #count{font-size:11px}}
 @media(max-width:850px){.toolbar{display:flex}.toolbar .pen-tools{padding-left:0;border-left:0}.toolbar #penHint{max-width:220px}.toolbar #count{margin-top:0}h1 span{font-size:15px}}
+/* Single chart: modest enlargement over 2-up, sized for the viewport. */
+.panels.single{width:clamp(55%,calc((100dvh - 180px)*1.35),70%);max-width:100%;margin-inline:auto}
+body.single-view .toolbar{position:sticky;top:0;z-index:10;background:var(--back);padding-block:6px;border-bottom:1px solid var(--line)}
+@media(max-width:850px){.panels.single{width:90%}}
+@media(max-width:580px){.panels.single{width:100%}}
 </style><script defer src="archive/manifest.js"></script><script defer src="pen.js"></script></head><body>
 <header><div><p class="eyebrow">NORTH ATLANTIC &amp; EUROPE · ALL TIMES UTC</p><h1>UKMO FAX <span>Run Archive &amp; Comparison</span></h1></div><div class="utc" id="updated"></div></header>
 <main><section class="controls"><label class="valid-label">Valid date & time — latest and earlier forecasts<select id="valid" aria-label="Forecast period"></select></label><p class="simple-rule"><strong>A = latest chart</strong><br>Choose a valid time · B = an earlier forecast for that same time</p><details class="source-settings"><summary>Source</summary><label>Chart source<select id="source"></select></label></details></section>
@@ -159,6 +164,7 @@ header{padding-top:4px;padding-bottom:4px}header .eyebrow{font-size:9px;line-hei
   first.onload=check;second.onload=check;$('wipeCanvas').append(first,second,line);slider();check();
  }
  function render(){
+  document.body.classList.toggle('single-view',mode==='1');
   const g=groups.get($('valid').value)||[],a=g[0],older=g.slice(1);
   const b=older.find(c=>c.id===chosenB)||older[0];chosenB=b?.id||'';
   const n=mode==='1'?1:mode==='4'?4:2;const bi=g.indexOf(b);
