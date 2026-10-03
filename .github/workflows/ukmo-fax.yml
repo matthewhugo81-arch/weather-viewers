@@ -42,7 +42,7 @@ jobs:
         continue-on-error: true
         working-directory: ukmo-fax-archive
         run: node scripts/collect-online.cjs
-      - name: Retain four runs per valid time and seven days of past charts
+      - name: Retain current products and comparison history
         working-directory: ukmo-fax-archive
         run: node scripts/retain-archive.cjs
       - name: Validate saved archive
@@ -51,6 +51,7 @@ jobs:
           node scripts/validate.cjs
           node scripts/test-loading.cjs
           node scripts/test-refresh.cjs
+          node scripts/test-products.cjs
       - name: Save images and manifest in repository history
         run: |
           git config user.name 'github-actions[bot]'

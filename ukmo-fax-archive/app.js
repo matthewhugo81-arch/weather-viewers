@@ -25,29 +25,26 @@
  }
  let charts=validCharts(archive);
  const imageURLs=new Map(charts.map(c=>[c.filename,location.protocol==='file:'?c.filename:(c.image_url||c.filename)]));
- let mode='2',chosenB='',groups=new Map();
+ let mode='2',chosenB='',groups=new Map(),entries=[],latest=new Map();
  function rebuild(){
-  groups=new Map();
-  // Merge valid times across sources. Distributor copies are not separate forecast runs.
-  // Prefer Nowster for equal runs, then the newest revision within that source.
-  charts.filter(c=>!$('source').value||c.source===$('source').value).sort((a,b)=>b.issue_time.localeCompare(a.issue_time)||(a.source==='metbrief-nowster'?0:1)-(b.source==='metbrief-nowster'?0:1)||b.download_time.localeCompare(a.download_time)).forEach(c=>{
-   if(!groups.has(c.valid_time))groups.set(c.valid_time,[]);
-   const g=groups.get(c.valid_time);if(!g.some(x=>x.issue_time===c.issue_time))g.push(c);
-  });
-  for(const [v,g] of groups)groups.set(v,g.slice(0,4));
-  const old=$('valid').value;$('valid').replaceChildren();
-  const day=(archive.updated_at||new Date().toISOString()).slice(0,10);
-  const current=document.createElement('optgroup');current.label='Current dates · '+day+' onwards (UTC)';
-  const history=document.createElement('optgroup');history.label='Earlier dates · archived charts';
-  [...groups.keys()].sort().forEach(v=>{
-   const g=groups.get(v),a=g[0],leads=[...new Set(g.slice(1).map(c=>'T+'+c.lead_hours))];
-   const label=short(v)+' · '+(a.lead_hours===0?'Analysis':'Latest T+'+a.lead_hours+' · run '+short(a.issue_time))+(leads.length?' · earlier: '+leads.join(', '):'');
-   (v.slice(0,10)>=day?current:history).append(new Option(label,v));
-  });
-  if(current.children.length)$('valid').append(current);
-  if(history.children.length)$('valid').append(history);
-  if(groups.has(old))$('valid').value=old;
-  else if(current.children.length)$('valid').value=current.children[0].value;
+  const old=$('valid').value,browse=$('browseMode').value;
+  ({entries,groups,latest}=window.FaxModel.build(charts,$('source').value,browse));
+  $('valid').replaceChildren();
+  for(const e of entries){
+   const c=e.a,label=browse==='latest'?(c.lead_hours===0?'Analysis':'T+'+c.lead_hours)+' · valid '+short(c.valid_time)+' · run '+short(c.issue_time):short(c.valid_time)+' · newest run '+short(c.issue_time)+' · T+'+c.lead_hours;
+   $('valid').add(new Option(label,e.key));
+  }
+  if(entries.some(e=>e.key===old))$('valid').value=old;
+  else if(entries.length)$('valid').value=entries[0].key;
+  $('selectionLabel').textContent=browse==='latest'?'CHART A — LATEST AVAILABLE BY LEAD':'CHART A — ARCHIVED VALID TIME';
+  $('leadShelf').hidden=browse!=='latest';$('leadShelf').replaceChildren();
+  for(const lead of window.FaxModel.leads){
+   const c=latest.get(lead),button=document.createElement('button');button.type='button';button.dataset.lead=lead;button.disabled=!c;
+   button.textContent=lead===0?'Analysis':'T+'+lead;
+   button.title=c?'Latest available: run '+short(c.issue_time)+' · valid '+short(c.valid_time):'No chart captured for this lead';
+   button.setAttribute('aria-pressed',String($('valid').value==='lead:'+lead));
+   button.onclick=()=>{if(!c)return;$('valid').value='lead:'+lead;chosenB='';render();};$('leadShelf').append(button);
+  }
   render();
  }
  // Cache immutable images as object URLs, shared by visible panels and prefetches.
@@ -63,8 +60,8 @@
   clearTimeout(preloadTimer);preloadTimer=setTimeout(()=>{
    const visible=[...document.querySelectorAll('#panels img,#wipeCanvas img')];
    if(visible.some(i=>!i.complete||!i.naturalWidth))return;
-   const times=[...groups.keys()].sort(),pos=times.indexOf($('valid').value);
-   const candidates=[...(groups.get(times[pos+1])||[]).slice(0,2),...(groups.get(times[pos-1])||[]).slice(0,2)];
+   const pos=entries.findIndex(e=>e.key===$('valid').value);
+   const candidates=[entries[pos+1]?.a,entries[pos-1]?.a].filter(Boolean);
    for(const c of candidates)cachedImage(c.filename,'low').catch(()=>{});
    // Bound memory without revoking URLs still displayed by a panel.
    while(imageCache.size>32){const key=imageCache.keys().next().value,task=imageCache.get(key);imageCache.delete(key);task.then(url=>{if(![...document.images].some(i=>i.src===url))URL.revokeObjectURL(url);}).catch(()=>{});}
@@ -90,7 +87,7 @@
  function description(c){const cycle=c.issue_time.slice(11,13)+"Z";const date=new Date(c.issue_time).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});return `${cycle} ${c.lead_hours===0?"analysis":"run"} · ${date} · T+${c.lead_hours}`;}
  function panel(c,index,older){
   const p=document.createElement('article');p.className='panel';const h=document.createElement('div');h.className='panel-head';
-  const l=document.createElement('div');l.className='panel-label';l.textContent=index===0?'CHART A · LATEST SAVED':index===1?'CHART B · PREVIOUS RUN':`CHART ${String.fromCharCode(65+index)} · OLDER RUN`;h.append(l);
+  const l=document.createElement('div');l.className='panel-label';l.textContent=index===0?($('browseMode').value==='latest'?'CHART A · LATEST AVAILABLE T+'+(c?.lead_hours??''):'CHART A · ARCHIVE'):index===1?'CHART B · PREVIOUS RUN':`CHART ${String.fromCharCode(65+index)} · OLDER RUN`;h.append(l);
   if(index===1){const s=document.createElement('select');s.setAttribute('aria-label','Chart B previous run');
    if(!older.length){s.add(new Option('No previous run saved yet',''));s.disabled=true;}
    older.forEach((x,i)=>s.add(new Option(`${i===0?'Previous run':`${i+1} runs back`} · ${description(x)}`,x.id)));
@@ -116,7 +113,7 @@
  }
  function render(){
   document.body.classList.toggle('single-view',mode==='1');
-  const g=groups.get($('valid').value)||[],a=g[0],older=g.slice(1);
+  const entry=entries.find(e=>e.key===$('valid').value),a=entry?.a,older=entry?.older||[],g=a?[a,...older]:[];
   const b=older.find(c=>c.id===chosenB)||older[0];chosenB=b?.id||'';
   const n=mode==='1'?1:mode==='4'?4:2;const bi=g.indexOf(b);
   const selected=[a,b,...(bi>=0?g.slice(bi+1):[])];
@@ -124,28 +121,30 @@
   for(let i=0;i<n;i++)$('panels').append(panel(selected[i],i,older));
   $('validTitle').textContent=a?`VALID ${fmt(a.valid_time)}`:'No saved charts';
   const period=$('valid');
-  const timeline=[...groups.keys()].sort(),position=timeline.indexOf(period.value);
+  const timeline=entries.map(e=>e.key),position=timeline.indexOf(period.value);
   $('previousPeriod').disabled=position<=0;
   $('nextPeriod').disabled=position<0||position>=timeline.length-1;
   $('count').textContent=`${older.length} previous run${older.length===1?'':'s'} saved`;
-  $('availability').textContent=!a?'No charts are indexed. Run archive.bat, then reload.':b?`A: latest run ${short(a.issue_time)} (T+${a.lead_hours}). B: ${short(b.issue_time)} (T+${b.lead_hours}). Both valid ${short(a.valid_time)}.`:'Chart A is the latest saved forecast. No earlier run is archived for this valid time yet.';
+  const current=$('browseMode').value==='latest';
+  $('availability').textContent=!a?'No charts are available for this source.':(current?(a.lead_hours===0?'Latest available analysis':'Latest available T+'+a.lead_hours)+' · run '+short(a.issue_time)+'. This lead stays in Chart A until a newer chart for the same lead arrives. ':'Archived chart · run '+short(a.issue_time)+'. ')+(b?'B: earlier run '+short(b.issue_time)+' (T+'+b.lead_hours+'). Both valid '+short(a.valid_time)+'.':'No earlier forecast is saved for this exact valid time.');
+  document.querySelectorAll('#leadShelf button').forEach(button=>button.setAttribute('aria-pressed',String(period.value==='lead:'+button.dataset.lead)));
   $('wipeArea').hidden=mode!=='wipe';wipe(a,b);window.FaxPen?.sync(mode);preloadNearby();
   $('rows').replaceChildren();g.forEach(c=>{const tr=document.createElement('tr');[fmt(c.valid_time),fmt(c.issue_time),'T+'+c.lead_hours,names[c.source]||c.source,fmt(c.download_time)].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.append(td);});const td=document.createElement('td');td.append(original(c));tr.append(td);$('rows').append(tr);});
-  const best=[...groups.entries()].sort((a,b)=>b[1].length-a[1].length)[0];$('example').disabled=!best||best[1].length<2;$('exampleInfo').textContent=best&&best[1].length>1?' '+short(best[0]):' No period has previous runs yet.';
+  const best=entries.find(e=>e.older.length);$('example').disabled=!best;$('exampleInfo').textContent=best?' '+short(best.a.valid_time):' No period has previous runs yet.';
  }
- $('source').add(new Option('Combined · all available times',''));
+ $('source').add(new Option('Combined · latest available products',''));
  [...new Set(charts.map(c=>c.source))].sort().forEach(s=>$('source').add(new Option(names[s]||s,s)));
  $('source').value='';
- $('source').onchange=rebuild;$('valid').onchange=()=>{chosenB='';render();};
+ $('browseMode').onchange=()=>{chosenB='';rebuild();};$('source').onchange=()=>{chosenB='';rebuild();};$('valid').onchange=()=>{chosenB='';render();};
  function stepPeriod(delta){
-  const period=$('valid'),timeline=[...groups.keys()].sort(),next=timeline.indexOf(period.value)+delta;
+  const period=$('valid'),timeline=entries.map(e=>e.key),next=timeline.indexOf(period.value)+delta;
   if(next<0||next>=period.options.length)return;
   period.value=timeline[next];chosenB='';render();
  }
  $('previousPeriod').onclick=()=>stepPeriod(-1);
  $('nextPeriod').onclick=()=>stepPeriod(1);
  document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll('[data-mode]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));render();});
- $('example').onclick=()=>{const best=[...groups.entries()].sort((a,b)=>b[1].length-a[1].length)[0];if(best){$('valid').value=best[0];chosenB='';render();document.querySelector('.controls').scrollIntoView({behavior:'smooth'});}};
+ $('example').onclick=()=>{const best=entries.find(e=>e.older.length);if(best){$('valid').value=best.key;chosenB='';render();document.querySelector('.controls').scrollIntoView({behavior:'smooth'});}};
  $('slider').oninput=slider;window.addEventListener('resize',fit);
  $('updated').textContent=archive.updated_at?'Snapshot '+fmt(archive.updated_at):'Archive unavailable';$('inventoryCount').textContent=charts.length+' stored images';
  if(archive.pending?.length){$('pending').hidden=false;$('pending').textContent=archive.pending.length+' chart(s) await date review. See the setup guide.';}
