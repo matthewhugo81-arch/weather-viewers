@@ -80,3 +80,9 @@ test('A selected run cannot retain a reference date from a different cycle',asyn
  s.state.referenceInit=Date.parse('2026-10-03T06:00:00Z');s.buildFrames();
  assert.equal(new Date(s.state.referenceInit).getUTCHours(),0);
 });
+
+test('Selection changes during initial index loading do not report missing maps',()=>{
+ const s=viewer();s.e.refresh.disabled=true;s.e.refRun.value='0';s.e.lead.value='120';s.buildFrames();
+ assert.equal(s.state.userSelected,true);assert.equal(s.state.frames.length,0);
+ assert.equal(s.e.statusText.textContent,'Checking model dates…');assert.equal(s.e.empty.style.display,'flex');
+});
