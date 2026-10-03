@@ -25,14 +25,14 @@ test('Wrong cycle, wrong lead and uncertain date readings are rejected',()=>{
  assert.throws(()=>readDates(printed(init,48),0,72,now));
  assert.throws(()=>readDates('Init: nonsense Valid: nonsense',0,48,now));
 });
-function viewer(imageFactory){
+function viewer(imageFactory,fetchMock){
  const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
  const elements={};const get=id=>elements[id]||(elements[id]={value:'',style:{},children:[],options:[],classList:{toggle(){}},addEventListener(){},getAttribute(n){return this[n]||null},removeAttribute(n){delete this[n]},querySelector(){return {textContent:''}}});
  for(const [id,value] of Object.entries({model:'gfs',variable:'1',compareMode:'history',refRun:'6',lead:'0',displayView:'single'}))get(id).value=value;
  Object.defineProperty(get('lead'),'innerHTML',{set(html){this.options=[...html.matchAll(/value="(\d+)"/g)].map(m=>({value:m[1],disabled:false}));this.value=this.options[0]?.value||'';}});
- const context={window:{WZModels:r,addEventListener(){}},document:{getElementById:get,addEventListener(){}},Date,Image:imageFactory||function(){},setInterval(){},setTimeout,clearTimeout,AbortSignal};
+ const context={window:{WZModels:r,addEventListener(){}},document:{getElementById:get,addEventListener(){}},Date,fetch:fetchMock,Image:imageFactory||function(){},setInterval(){},setTimeout,clearTimeout,AbortSignal};
  const html=fs.readFileSync(path.join(__dirname,'../Wetterzentrale_Model_Viewer.html'),'utf8');
- const code=html.match(/<script>\s*([^]*?)<\/script>/)[1].replace('updateModeUI();populateLeadOptions();reload(true);','renderRunBar=()=>{};updatePanelDisplay=()=>{};globalThis.subject={candidate,populateLeadOptions,state,e,freshIndex,buildFrames,loadImage,cancelImageLoads};');
+ const code=html.match(/<script>\s*([^]*?)<\/script>/)[1].replace('updateModeUI();populateLeadOptions();reload(true);','renderRunBar=()=>{};updatePanelDisplay=()=>{};globalThis.subject={candidate,populateLeadOptions,state,e,freshIndex,buildFrames,loadImage,cancelImageLoads,refreshIndex};');
  vm.runInNewContext(code,context);return context.subject;
 }
 test('A decoded chart from the wrong day cannot enter an exact-time comparison',()=>{
@@ -40,11 +40,12 @@ test('A decoded chart from the wrong day cannot enter an exact-time comparison',
  s.state.index={schema:1,checkedAt:new Date().toISOString(),charts:{[name]:{init:'2026-10-02T06:00:00Z',valid:'2026-10-04T06:00:00Z',sha:'a'.repeat(64)}}};
  const wrong=s.candidate('aifs',6,48,init);assert.equal(wrong.ok,false);assert.match(wrong.reason,/Different stored date/);assert.equal(wrong.url,'');
  s.state.index.charts[name].init='2026-10-03T06:00:00Z';s.state.index.charts[name].valid='2026-10-05T06:00:00Z';
- assert.equal(s.candidate('aifs',6,48,init).url,'wetterzentrale/charts/'+'a'.repeat(64)+'.png');
+ assert.match(s.candidate('aifs',6,48,init).url,/charts\/a{64}\.png\?session=/);
 });
-test('Expired or missing date indices withhold charts',()=>{
+test('Missing and excessively old indices are rejected; delayed snapshots remain usable',()=>{
  const s=viewer();assert.equal(s.freshIndex(),false);
- s.state.index={schema:1,checkedAt:new Date(Date.now()-76*60000).toISOString(),charts:{}};assert.equal(s.freshIndex(),false);
+ s.state.index={schema:1,checkedAt:new Date(Date.now()-76*60000).toISOString(),charts:{}};assert.equal(s.freshIndex(),true);
+ s.state.index.checkedAt=new Date(Date.now()-7*3600000).toISOString();assert.equal(s.freshIndex(),false);
  assert.equal(s.candidate('gfs',6,48,now).ok,false);
 });
 test('T+0 survives selector regeneration and every UI option stays within T+240',()=>{
@@ -57,8 +58,8 @@ test('A Pages refresh retains retired images until open date indices expire',()=
  const current='a'.repeat(64)+'.png',recent='b'.repeat(64)+'.png',expired='c'.repeat(64)+'.png';
  try{
   for(const file of [current,recent,expired])fs.writeFileSync(path.join(dir,file),'test');
-  fs.utimesSync(path.join(dir,recent),(now-74*60000)/1000,(now-74*60000)/1000);
-  fs.utimesSync(path.join(dir,expired),(now-91*60000)/1000,(now-91*60000)/1000);
+  fs.utimesSync(path.join(dir,recent),(now-5*3600000)/1000,(now-5*3600000)/1000);
+  fs.utimesSync(path.join(dir,expired),(now-9*3600000)/1000,(now-9*3600000)/1000);
   pruneSnapshots(dir,new Set([current]),now);
   assert(fs.existsSync(path.join(dir,current)));assert(fs.existsSync(path.join(dir,recent)));assert(!fs.existsSync(path.join(dir,expired)));
  }finally{for(const file of fs.readdirSync(dir))fs.unlinkSync(path.join(dir,file));fs.rmdirSync(dir);}
@@ -71,7 +72,7 @@ test('All-model single view displays the first model even when it finishes first
  const charts={};for(const [i,key] of r.order.entries())charts[r.filename(key,0,120,1)]={init:new Date(init).toISOString(),valid:new Date(init+120*3600000).toISOString(),sha:String(i+1).repeat(64)};
  s.state.index={schema:1,checkedAt:new Date().toISOString(),charts};s.buildFrames();
  assert.equal(images.length,6);images[0].onload();await new Promise(resolve=>setImmediate(resolve));
- assert.match(s.e.singleImg.src,/1{64}\.png$/);assert.equal(s.e.empty.style.display,'none');
+ assert.match(s.e.singleImg.src,/1{64}\.png\?session=/);assert.equal(s.e.empty.style.display,'none');
  for(let i=1;i<images.length;i++)images[i].onload();await new Promise(resolve=>setImmediate(resolve));
  s.buildFrames();await new Promise(resolve=>setImmediate(resolve));assert.equal(images.length,8);assert(s.e.singleImg.src);
 });
@@ -102,4 +103,38 @@ test('A failed image retries with a fresh URL rather than a cached failure',asyn
  const s=viewer(MockImage),result=s.loadImage('chart.png');images[0].onerror();
  assert.equal(images.length,2);assert.match(images[1].src,/chart\.png\?retry=/);
  images[1].onload();assert.equal(await result,true);
+});
+
+
+test('A delayed index still permits exact dated snapshots, not a substituted run',()=>{
+ const s=viewer(),init=Date.parse('2026-10-03T06:00:00Z'),name=r.filename('icon',6,108,1);
+ s.state.index={schema:1,checkedAt:new Date(Date.now()-2*3600000).toISOString(),charts:{[name]:{init:new Date(init).toISOString(),valid:new Date(init+108*3600000).toISOString(),sha:'a'.repeat(64)}}};
+ assert.equal(s.candidate('icon',6,108,init).ok,null);
+ assert.equal(s.candidate('icon',6,108,init+24*3600000).ok,false);
+ assert.match(s.candidate('icon',18,132,init).reason,/Required T\+132.*T\+120/);
+});
+test('Background refresh adopts newer indices, preserves selection and survives failures',async()=>{
+ let response;const s=viewer(undefined,async()=>{if(response instanceof Error)throw response;return {ok:true,json:async()=>response};});
+ const previous={schema:1,ceiling:240,checkedAt:new Date(Date.now()-2*3600000).toISOString(),charts:{}};
+ s.state.index=previous;s.e.refRun.value='12';s.e.lead.value='18';
+ response=new Error('offline');await s.refreshIndex();assert.equal(s.state.index,previous);assert.equal(s.e.lead.value,'18');
+ response={...previous,checkedAt:new Date().toISOString()};await s.refreshIndex();assert.equal(s.state.index,response);assert.equal(s.e.refRun.value,'12');assert.equal(s.e.lead.value,'18');
+ const current=response;response=previous;await s.refreshIndex();assert.equal(s.state.index,current);
+ response={...previous,checkedAt:new Date(Date.now()+3600000).toISOString()};await s.refreshIndex();assert.equal(s.state.index,current);
+});
+test('Every model/cycle/variable/lead resolves a matching dated snapshot within T+240',()=>{
+ const s=viewer(),init=Date.parse('2026-10-03T00:00:00Z');let count=0;
+ s.state.index={schema:1,checkedAt:new Date().toISOString(),charts:{}};
+ for(const key of r.order)for(const run of r.models[key].cycles)for(const v of r.models[key].vars)for(const lead of r.leads(key,run)){
+  const start=init+run*3600000,name=r.filename(key,run,lead,v);s.e.variable.value=String(v);
+  s.state.index.charts[name]={init:new Date(start).toISOString(),valid:new Date(start+lead*3600000).toISOString(),sha:'a'.repeat(64)};
+  assert.equal(s.candidate(key,run,lead,start).ok,null,name);count++;
+ }
+ assert(count>2000);
+});
+test('Session-keyed image retries preserve the query and cached success is reused',async()=>{
+ const images=[];function MockImage(){images.push(this);this.naturalWidth=959;this.naturalHeight=741;}
+ const s=viewer(MockImage),p=s.loadImage('chart.png?session=sample');assert.equal(images[0].fetchPriority,'high');images[0].onerror();
+ assert.match(images[1].src,/\?session=sample&retry=/);images[1].onload();assert.equal(await p,true);
+ assert.equal(await s.loadImage('chart.png?session=sample'),true);assert.equal(images.length,2);
 });
