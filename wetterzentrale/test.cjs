@@ -140,11 +140,11 @@ test('Revisiting a source slot refreshes its cache key after three minutes',()=>
 });
 
 
-test('Run bar puts today 12Z to the right of 06Z and yesterday 18Z first',()=>{
+test('Run history ends at the selected cycle rather than a newer clock-hour slot',()=>{
  class Clock extends Date{constructor(...a){super(...(a.length?a:['2026-10-03T16:00:00Z']))}static now(){return Date.parse('2026-10-03T16:00:00Z')}}
  const s=viewer(undefined,undefined,Clock);s.e.refRun.value='6';s.e.lead.value='144';s.buildFrames();
- assert.deepEqual(Array.from(s.state.frames,f=>f.run),[18,0,6,12]);
- assert.deepEqual(Array.from(s.state.frames,f=>f.lead),[156,150,144,138]);
+ assert.deepEqual(Array.from(s.state.frames,f=>f.run),[12,18,0,6]);
+ assert.deepEqual(Array.from(s.state.frames,f=>f.lead),[162,156,150,144]);
  assert(s.state.frames.every(f=>f.valid===s.state.frames[0].valid));s.cancelImageLoads();
 });
 test('Automatic refresh keeps the old image until replacement loads and preserves selection',async()=>{
@@ -159,3 +159,16 @@ test('Automatic refresh keeps the old image until replacement loads and preserve
  const fresh=s.e.singleImg.src;time+=300001;const failed=s.autoRefresh();
  for(let i=8;i<images.length;i++)images[i].onerror();await failed;assert.equal(s.e.singleImg.src,fresh);
 });
+
+ test('Evening 12Z selection starts on 12Z, with previous-day 18Z first',async()=>{
+ class Clock extends Date{constructor(...a){super(...(a.length?a:['2026-10-03T19:00:00Z']))}static now(){return Date.parse('2026-10-03T19:00:00Z')}}
+ const images=[];function MockImage(){images.push(this);this.naturalWidth=959;this.naturalHeight=741;}
+ const s=viewer(MockImage,undefined,Clock);s.e.model.value='ecm';s.e.refRun.value='12';s.e.lead.value='96';s.buildFrames();
+ assert.deepEqual(Array.from(s.state.frames,f=>f.run),[18,0,6,12]);
+ assert.deepEqual(Array.from(s.state.frames,f=>f.lead),[114,108,102,96]);
+ assert.equal(s.state.frames[0].init,Date.parse('2026-10-02T18:00:00Z'));
+ assert(s.state.frames.every(f=>f.valid===Date.parse('2026-10-07T12:00:00Z')));
+ for(const im of images)im.onload();await new Promise(r=>setImmediate(r));
+ assert.equal(s.state.frames[s.state.idx].run,12);assert.match(s.e.singleImg.src,/ECMOPEU12_96_1/);
+ });
+
