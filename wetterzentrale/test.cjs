@@ -25,14 +25,14 @@ test('Wrong cycle, wrong lead and uncertain date readings are rejected',()=>{
  assert.throws(()=>readDates(printed(init,48),0,72,now));
  assert.throws(()=>readDates('Init: nonsense Valid: nonsense',0,48,now));
 });
-function viewer(){
+function viewer(imageFactory){
  const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
- const elements={};const get=id=>elements[id]||(elements[id]={value:'',style:{},children:[],options:[],addEventListener(){}});
+ const elements={};const get=id=>elements[id]||(elements[id]={value:'',style:{},children:[],options:[],classList:{toggle(){}},addEventListener(){},getAttribute(n){return this[n]||null},removeAttribute(n){delete this[n]},querySelector(){return {textContent:''}}});
  for(const [id,value] of Object.entries({model:'gfs',variable:'1',compareMode:'history',refRun:'6',lead:'0',displayView:'single'}))get(id).value=value;
  Object.defineProperty(get('lead'),'innerHTML',{set(html){this.options=[...html.matchAll(/value="(\d+)"/g)].map(m=>({value:m[1],disabled:false}));this.value=this.options[0]?.value||'';}});
- const context={window:{WZModels:r,addEventListener(){}},document:{getElementById:get,addEventListener(){}},Date,Image:function(){},setInterval(){},setTimeout(){},clearTimeout(){},AbortSignal};
+ const context={window:{WZModels:r,addEventListener(){}},document:{getElementById:get,addEventListener(){}},Date,Image:imageFactory||function(){},setInterval(){},setTimeout,clearTimeout,AbortSignal};
  const html=fs.readFileSync(path.join(__dirname,'../Wetterzentrale_Model_Viewer.html'),'utf8');
- const code=html.match(/<script>\s*([^]*?)<\/script>/)[1].replace('updateModeUI();populateLeadOptions();reload(true);','globalThis.subject={candidate,populateLeadOptions,state,e,freshIndex};');
+ const code=html.match(/<script>\s*([^]*?)<\/script>/)[1].replace('updateModeUI();populateLeadOptions();reload(true);','renderRunBar=()=>{};updatePanelDisplay=()=>{};globalThis.subject={candidate,populateLeadOptions,state,e,freshIndex,buildFrames,loadImage};');
  vm.runInNewContext(code,context);return context.subject;
 }
 test('A decoded chart from the wrong day cannot enter an exact-time comparison',()=>{
@@ -62,4 +62,21 @@ test('A Pages refresh retains retired images until open date indices expire',()=
   pruneSnapshots(dir,new Set([current]),now);
   assert(fs.existsSync(path.join(dir,current)));assert(fs.existsSync(path.join(dir,recent)));assert(!fs.existsSync(path.join(dir,expired)));
  }finally{for(const file of fs.readdirSync(dir))fs.unlinkSync(path.join(dir,file));fs.rmdirSync(dir);}
+});
+
+test('All-model single view displays the first model even when it finishes first',async()=>{
+ const images=[];function MockImage(){images.push(this);this.naturalWidth=959;this.naturalHeight=741;}
+ const s=viewer(MockImage),init=Date.parse('2026-10-03T00:00:00Z');
+ s.e.compareMode.value='allmodels';s.e.refRun.value='0';s.e.lead.value='120';s.state.referenceInit=init;
+ const charts={};for(const [i,key] of r.order.entries())charts[r.filename(key,0,120,1)]={init:new Date(init).toISOString(),valid:new Date(init+120*3600000).toISOString(),sha:String(i+1).repeat(64)};
+ s.state.index={schema:1,checkedAt:new Date().toISOString(),charts};s.buildFrames();
+ assert.equal(images.length,8);images[0].onload();await new Promise(resolve=>setImmediate(resolve));
+ assert.match(s.e.singleImg.src,/1{64}\.png$/);assert.equal(s.e.empty.style.display,'none');
+ for(const im of images.slice(1))im.onload();await new Promise(resolve=>setImmediate(resolve));
+ s.buildFrames();await new Promise(resolve=>setImmediate(resolve));assert.equal(images.length,8);assert(s.e.singleImg.src);
+});
+test('A selected run cannot retain a reference date from a different cycle',async()=>{
+ const s=viewer();s.e.compareMode.value='allmodels';s.e.refRun.value='0';s.e.lead.value='120';
+ s.state.referenceInit=Date.parse('2026-10-03T06:00:00Z');s.buildFrames();
+ assert.equal(new Date(s.state.referenceInit).getUTCHours(),0);
 });
