@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Wetterzentrale Run-to-Run Model Viewer v13</title>
+<title>Wetterzentrale Run-to-Run Model Viewer v14</title>
 <style>
 :root{
   --bg:#071018;--panel:#0d1822;--panel2:#132330;--line:#294052;
@@ -71,7 +71,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 <header>
   <div class="brand">
     <h1>Wetterzentrale • Run-to-Run Viewer</h1>
-    <div class="sub">Run-to-run model cycles • date-checked valid-time matching • Europe • v13</div>
+    <div class="sub">Run-to-run model cycles • date-checked valid-time matching • Europe • v14</div>
   </div>
   <div class="toolbar">
     <div class="group"><span class="label">Mode</span><select id="compareMode">
@@ -261,7 +261,7 @@ function trimImageCache(){
  for(const [url,entry] of imageCache){if(count<=32)break;if(!entry.ready||state.frames.some(f=>f.url===url||f.url===entry.image.src))continue;imageCache.delete(url);entry.image.src='';count--;}
 }
 function pumpImages(){
- while(!cancellingImages&&activeImages<4&&imageQueue.length){const job=imageQueue.shift();if(!job.cancelled)job.start();}
+ while(!cancellingImages&&activeImages<6&&imageQueue.length){const job=imageQueue.shift();if(!job.cancelled)job.start();}
 }
 function loadImage(url){
  if(imageCache.has(url))return imageCache.get(url).promise;
