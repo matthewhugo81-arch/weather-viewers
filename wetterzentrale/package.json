@@ -1,0 +1,13 @@
+{
+  "name": "wetterzentrale-health",
+  "private": true,
+  "scripts": {
+    "check": "node check-availability.cjs",
+    "test": "node --test test.cjs"
+  },
+  "dependencies": {
+    "pngjs": "7.0.0",
+    "tesseract.js": "7.0.0",
+    "sharp": "0.35.5"
+  }
+}
