@@ -58,13 +58,25 @@ async function collect(p){
 }
 async function manifest(){
  const cutoff=new Date(Date.now()-7*86400000).toISOString();
- const [rows,status]=await Promise.all([db('fax_chart_archive?valid_time=gte.'+cutoff+'&select=chart&order=valid_time.asc&limit=2000'),db('fax_source_status?select=product,checked_at,last_attempt,error,sha,header&order=product')]);
+ const [rows,status]=await Promise.all([db('fax_chart_archive?valid_time=gte.'+cutoff+'&select=chart&order=valid_time.asc&limit=2000'),db('fax_source_status?product=neq.__cleanup&select=product,checked_at,last_attempt,error,sha,header&order=product')]);
  const charts=retain(rows.map(r=>r.chart));
  // All-source check time is the oldest successful check, never the newest single product.
  const complete=status.length===products.length&&status.every(s=>s.checked_at&&!s.error);
  const checked=complete?status.map(s=>s.checked_at).sort()[0]:null;
  const updated=charts.map(c=>c.download_time).sort().at(-1)||null;
  return {schema_version:1,updated_at:updated,revision:charts.map(c=>c.id+':'+(c.image_url||'')).sort().join('|'),last_successful_collection:checked,collection_status:{checked_at:checked,products:products.length,download_failures:status.filter(s=>s.error).length,errors:status.filter(s=>s.error).map(s=>s.product+': '+s.error),pending:0},source_status:status,charts,pending:[],live_archive:true};
+}
+async function cleanup(){
+ if(!await db('rpc/claim_fax_check','POST',{p_product:'__cleanup'}))return {skipped:true};
+ try{
+  const cutoff=new Date(Date.now()-8*86400000).toISOString();
+  const rows=await db('fax_chart_archive?valid_time=lt.'+cutoff+'&select=id,chart&limit=200');
+  const prefixes=rows.filter(r=>r.chart.image_url).map(r=>r.chart.filename);
+  if(prefixes.some(p=>!/^archive\/objects\/[a-z0-9_-]+\/[a-f0-9]{64}\.png$/.test(p)))throw Error('Invalid retention filename');
+  if(prefixes.length){const r=await fetch(base+'/storage/v1/object/fax-archive',{method:'DELETE',headers:{...auth,'Content-Type':'application/json'},body:JSON.stringify({prefixes}),signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('Retention storage request failed');}
+  for(const r of rows)await db('fax_chart_archive?id=eq.'+encodeURIComponent(r.id),'DELETE');
+  await db('fax_source_status?product=eq.__cleanup','PATCH',{checked_at:now(),error:null});return {removed:rows.length};
+ }catch(e){await db('fax_source_status?product=eq.__cleanup','PATCH',{error:String(e.message).slice(0,200)});throw e;}
 }
 Deno.serve(async req=>{
  const respond=(x,status=200)=>new Response(JSON.stringify(x),{status,headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store'}});
@@ -74,6 +86,7 @@ Deno.serve(async req=>{
   const url=new URL(req.url);
   if(req.method==='GET')return respond(await manifest());
   if(req.method!=='POST')return respond({error:'Method not allowed'},405);
+  if(url.searchParams.get('product')==='__cleanup')return respond(await cleanup());
   const p=products.find(p=>p.product===url.searchParams.get('product'));
   if(!p)return respond({error:'Unknown product'},400);
   return respond(await collect(p));

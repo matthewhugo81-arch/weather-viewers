@@ -30,3 +30,4 @@ The viewer shows up to four distinct runs per valid time and seven days of past 
 - `hosted/` contains the deployed function source and fixed product registry. `shared/automatic-edge.js` contains the drawing service.
 
 Source publication delays remain outside this system's control. The practical target is a new source chart appearing within one five-minute collection interval plus the viewer's one-minute check; this is not an uptime guarantee.
+A daily cleanup removes hosted originals and metadata older than eight days by valid time (one day beyond the seven-day visible window). GitHub history remains a separate backup. The cleanup uses the storage API and never rewrites Git history.
