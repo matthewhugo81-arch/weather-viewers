@@ -2,14 +2,14 @@
 
 This project is hosted in `matthewhugo81-arch/weather-viewers`, under `ukmo-fax-archive/`.
 
-The repository-level `.github/workflows/ukmo-fax.yml` checks both sources every six hours, at 03:17, 09:17, 15:17 and 21:17 UTC. GitHub schedules may run late. The task uses a cross-platform Node.js collector with Tesseract OCR, rather than the Windows-only local script. Your computer does not need to be running.
+The repository-level `.github/workflows/ukmo-fax.yml` checks both sources hourly on the hour: 00:00, 01:00, 02:00 and so on, UTC. GitHub schedules may run late. The task uses a cross-platform Node.js collector with Tesseract OCR, rather than the Windows-only local script. Your computer does not need to be running.
 
 ## What is saved
 
 - Every new original PNG is saved unchanged under its SHA-256 hash.
 - Images and both manifest files are committed to the GitHub repository, so they survive between runs and are recoverable from repository history.
 - Up to four distinct runs are retained per valid time (latest plus three earlier runs). Charts valid more than seven days ago and unreferenced active image files are removed; earlier Git history remains recoverable.
-- Each Sunday at approximately 03:17 UTC, and on manual workflow runs, a separate archive snapshot is uploaded to the workflow's Artifacts area. These extra snapshots expire after 90 days; the committed archive remains.
+- Each Sunday at approximately 03:00 UTC, and on manual workflow runs, a separate archive snapshot is uploaded to the workflow's Artifacts area. These extra snapshots expire after 90 days; the committed archive remains.
 - Repository history and workflow artifacts are both on GitHub; this is not an off-provider disaster-recovery copy. Download a periodic snapshot if you want an independent backup.
 
 ## Publishing
@@ -30,7 +30,7 @@ GitHub may delay scheduled runs. Public-repository schedules can be disabled aft
 
 The Node dependencies are pinned in package.json and pnpm-lock.yaml. Run `pnpm install --frozen-lockfile --ignore-scripts`, then `node scripts/test-online.cjs` to test OCR against saved charts. The test never changes chart originals. `node scripts/collect-online.cjs` polls sources. The original archive.bat remains available for optional local collection, but does not upload local changes.
 
-The six-hourly workflow, rather than Windows Task Scheduler, is the normal online collection mechanism. Keep the whole `archive` directory and manifest when moving or restoring this site.
+The hourly workflow, rather than Windows Task Scheduler, is the normal online collection mechanism. Keep the whole `archive` directory and manifest when moving or restoring this site.
 
 References: [GitHub schedules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule), [Pages build API](https://docs.github.com/en/rest/pages/pages#request-a-github-pages-build).
 
