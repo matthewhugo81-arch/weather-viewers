@@ -1,16 +1,13 @@
-# Shared chart drawings
+# Automatic shared chart lines
 
-Public endpoint: https://znlriqmliaszlxlnkeic.supabase.co/functions/v1/fax-drawings
-Project: UKMO FAX Drawings (London, free plan).
+The live viewer uses the fax-lines Edge Function and public.fax_lines table.
+Apply automatic.sql to provision the table/RPC and deploy automatic-edge.js as fax-lines with JWT verification enabled. pen.js contains only the public anon credential. The service role key stays in the function runtime.
 
-Visitors do not need an account. The viewer uses the public legacy anonymous API key because this Edge Function uses the platform JWT verification. This key is not a secret and cannot directly read or write the drawing table. Service credentials stay in the Edge Function environment.
+Each pointer-up queues one UUID-tagged stroke automatically. Visitors see all strokes together, with no account, nickname, publication, or version selector. Polling refreshes visible charts every 15 seconds while the page is visible. Browser-local legacy strokes migrate when their exact chart is opened. The original PNG is unchanged.
 
-GET returns up to 50 versions for an exact chart filename. POST validates the immutable chart against the live manifest, PNG dimensions, four allowed colours, finite coordinate arrays, author length, 120 KB body limit and 10,000 total points. Each publication creates a separate row. New browsers choose the newest version by default; existing private drafts take precedence. Share / versions allows selecting another version or the original.
+An outbox persists additions/removals before network requests and retries after failures. Saves are idempotent, so uncertain responses do not duplicate lines. Concurrent users append separate records. Undo removes the latest line owned by this browser, and Clear mine removes only this browser's lines. Ownership uses a random local capability token whose hash is stored on the server; it is not a public identity. Clearing browser storage loses ownership access. Existing drawings remain public.
 
-A random 256-bit browser token authorizes withdrawal only of that browser's publications. Only its hash is stored server-side. This is a browser capability, not a verified person/account. Losing browser storage loses withdrawal access; the site owner can remove a publication in Supabase. Names are public, self-chosen and unverified. Never submit confidential content.
+The service validates archive membership, PNG dimensions, colour/point limits, payload size, and a bounded per-chart and overall quota. Tables have RLS enabled and no anon/authenticated grants or policies intentionally: only the validated service endpoint accesses them. The RPC uses SECURITY INVOKER, with EXECUTE granted only to service_role. No service credential is sent to the browser.
 
-Only the validated Edge Function uses service-role database access. RLS is enabled, anon/authenticated table grants and RPC execute privileges are revoked. The RLS-no-policy informational advisory is intentional: direct clients have no access. The publish RPC is SECURITY INVOKER and callable only by service_role. A transaction lock enforces 20 publications per hour per browser/network hash, 500 per day globally, 50 per chart and 5,000 active publications in total. Daily salted network hashes support abuse limits; raw IP addresses are not stored in this table. These limits bound stored data; a determined attacker can still consume public endpoint requests. No paid upgrade was enabled.
+schema.sql and edge.js document the superseded publication prototype, retained for migration history. They are not used by the current viewer. No publications existed when automatic sharing was introduced.
 
-No automatic deletion of shared versions. They remain tied to the exact PNG hash, so colour overlays cannot drift onto a newer run. The regular chart retention still controls which originals are shown in the viewer. For moderation, use the Supabase table editor on public.fax_drawings; identify a version by id, author and chart. Only remove the intended publication. Back up shared data separately; chart GitHub backups do not include this database.
-
-Deploy shared/edge.js as fax-drawings with verify_jwt=true. schema.sql documents the applied migration shared_fax_drawings. GET/POST/DELETE checks were tested including invalid payloads, unauthorized withdrawal and direct database denial.
