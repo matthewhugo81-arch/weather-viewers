@@ -65,6 +65,16 @@ async function request(url,options={}){
   if(r.status>=500||r.status===429)throw Error(`HTTP ${r.status}`);return r;
  }catch(e){error=e;if(n<2)await new Promise(r=>setTimeout(r,1000*(n+1)));}throw error;
 }
+function pruneSnapshots(objects,keep,now=Date.now()){
+ // Keep retired copies longer than the viewer's 75-minute index lifetime.
+ // An open page can then finish using its old, still-valid date index safely.
+ for(const file of fs.readdirSync(objects)){
+  if(!/^[a-f0-9]{64}\.png$/.test(file))continue;
+  const object=path.join(objects,file);
+  if(keep.has(file))fs.utimesSync(object,now/1000,now/1000);
+  else if(fs.statSync(object).mtimeMs<now-90*60000)fs.unlinkSync(object);
+ }
+}
 async function collect(root=__dirname){
  const dest=path.join(root,'availability.json');let old={charts:{}};
  if(fs.existsSync(dest))old=JSON.parse(fs.readFileSync(dest,'utf8').replace(/^\uFEFF/,''));
@@ -102,8 +112,8 @@ async function collect(root=__dirname){
  // Do not replace a healthy manifest with a wholesale source outage.
  if(result.summary.verified<complete*0.5)throw Error('Too few charts verified; previous manifest retained');
  fs.writeFileSync(dest+'.tmp',JSON.stringify(result)+'\n');fs.renameSync(dest+'.tmp',dest);
- const keep=new Set(Object.values(result.charts).map(c=>c.sha+'.png'));for(const file of fs.readdirSync(objects))if(/^[a-f0-9]{64}\.png$/.test(file)&&!keep.has(file))fs.unlinkSync(path.join(objects,file));
+ const keep=new Set(Object.values(result.charts).map(c=>c.sha+'.png'));pruneSnapshots(objects,keep);
  console.log(JSON.stringify(result.summary));return result;
 }
-module.exports={readDates,header,recognizeDates,collect,stamp};
+module.exports={readDates,header,recognizeDates,collect,stamp,pruneSnapshots};
 if(require.main===module)collect().catch(e=>{console.error(e);process.exitCode=1;});
