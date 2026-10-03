@@ -51,3 +51,15 @@ test('T+0 survives selector regeneration and every UI option stays within T+240'
  const s=viewer();s.populateLeadOptions();assert.equal(s.e.lead.value,'0');
  s.e.compareMode.value='allmodels';s.populateLeadOptions();assert.equal(s.e.lead.value,'0');assert(s.e.lead.options.every(o=>+o.value<=240));
 });
+test('A Pages refresh retains retired images until open date indices expire',()=>{
+ const fs=require('node:fs'),path=require('node:path'),{pruneSnapshots}=require('./check-availability.cjs');
+ const dir=fs.mkdtempSync(path.join(__dirname,'.test-snapshots-'));
+ const current='a'.repeat(64)+'.png',recent='b'.repeat(64)+'.png',expired='c'.repeat(64)+'.png';
+ try{
+  for(const file of [current,recent,expired])fs.writeFileSync(path.join(dir,file),'test');
+  fs.utimesSync(path.join(dir,recent),(now-74*60000)/1000,(now-74*60000)/1000);
+  fs.utimesSync(path.join(dir,expired),(now-91*60000)/1000,(now-91*60000)/1000);
+  pruneSnapshots(dir,new Set([current]),now);
+  assert(fs.existsSync(path.join(dir,current)));assert(fs.existsSync(path.join(dir,recent)));assert(!fs.existsSync(path.join(dir,expired)));
+ }finally{for(const file of fs.readdirSync(dir))fs.unlinkSync(path.join(dir,file));fs.rmdirSync(dir);}
+});
