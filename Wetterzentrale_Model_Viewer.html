@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Wetterzentrale Run-to-Run Model Viewer v11</title>
+<title>Wetterzentrale Run-to-Run Model Viewer v12</title>
 <style>
 :root{
   --bg:#071018;--panel:#0d1822;--panel2:#132330;--line:#294052;
@@ -68,7 +68,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 <header>
   <div class="brand">
     <h1>Wetterzentrale • Run-to-Run Viewer</h1>
-    <div class="sub">Run-to-run model cycles • date-checked valid-time matching • Europe • v11</div>
+    <div class="sub">Run-to-run model cycles • date-checked valid-time matching • Europe • v12</div>
   </div>
   <div class="toolbar">
     <div class="group"><span class="label">Mode</span><select id="compareMode">
@@ -215,6 +215,7 @@ function candidate(key,run,lead,init,age=0,sameLead=false){
  return f;
 }
 function buildFrames(){
+ if(!state.index&&e.refresh.disabled){state.userSelected=true;setEmptyText('Checking model dates…','Your selection will load when the availability check arrives.');e.empty.style.display='flex';status('Checking model dates…');return;}
  stop();resetZoom();state.generation++;const gen=state.generation;
  const all=e.compareMode.value==='allmodels',run=+e.refRun.value,lead=+e.lead.value;
  const init=state.referenceInit!==null&&new Date(state.referenceInit).getUTCHours()===run?state.referenceInit:nominalRun(run);
@@ -258,7 +259,7 @@ async function reload(autoLatest=false){
   if(!freshIndex())throw Error('Availability check is over 75 minutes old; waiting for a fresh check');
  }catch(err){state.index=previousIndex;if(freshIndex()){state.indexError='';toast('Using the recent date check; refresh request failed')}else{state.index=null;state.indexError=err.message;}}
  if(request!==state.request)return;
- e.refresh.disabled=false;state.referenceInit=nominalRun(+e.refRun.value);updateModeUI();populateLeadOptions();if(autoLatest)chooseLatest();buildFrames();
+ e.refresh.disabled=false;state.referenceInit=nominalRun(+e.refRun.value);updateModeUI();populateLeadOptions();if(autoLatest&&!state.userSelected)chooseLatest();buildFrames();
 }
 function usable(){return state.frames.map((f,i)=>f.ok===true?i:-1).filter(i=>i>=0)}
 function showFrame(i){
