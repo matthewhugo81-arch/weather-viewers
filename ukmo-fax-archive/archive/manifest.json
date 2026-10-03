@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-03T18:14:58Z",
+  "updated_at": "2026-10-03T18:28:45Z",
   "pending": [],
   "charts": [
     {
@@ -873,17 +873,17 @@
     }
   ],
   "collection_status": {
-    "checked_at": "2026-10-03T18:14:58Z",
+    "checked_at": "2026-10-03T18:28:45Z",
     "products": 17,
     "download_failures": 0,
     "pending": 0,
     "errors": []
   },
-  "last_successful_collection": "2026-10-03T18:14:58Z",
+  "last_successful_collection": "2026-10-03T18:28:45Z",
   "retention": {
     "runs_per_valid_time": 4,
     "past_valid_days": 7,
     "preferred_source": "metbrief-nowster",
-    "applied_at": "2026-10-03T18:14:58.713Z"
+    "applied_at": "2026-10-03T18:28:45.093Z"
   }
 }
