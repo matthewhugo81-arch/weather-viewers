@@ -1,7 +1,8 @@
 name: UKMO FAX online archive
 on:
   schedule:
-    - cron: '0 * * * *'
+    # Off-peak hourly check plus a stale-only fallback; GitHub scheduling is best effort.
+    - cron: '17,47 * * * *'
   workflow_dispatch:
   push:
     branches: [main]
@@ -25,27 +26,49 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+      - name: Decide whether collection is due
+        id: due
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const m=JSON.parse(fs.readFileSync('ukmo-fax-archive/archive/manifest.json','utf8'));
+          const age=Date.now()-Date.parse(m.last_successful_collection||'');
+          const due=process.env.EVENT_NAME!=='schedule'||!Number.isFinite(age)||age>=50*60000;
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,'run='+due+'\n');
+          console.log(due?'Collection due':'Recent successful collection; fallback skipped');
+          NODE
       - uses: actions/setup-node@v4
+        if: steps.due.outputs.run == 'true'
         with:
           node-version: '22'
       - uses: pnpm/action-setup@v4
+        if: steps.due.outputs.run == 'true'
         with:
           version: '11.19.0'
       - name: Install locked collector dependencies
+        if: steps.due.outputs.run == 'true'
         working-directory: ukmo-fax-archive
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Collect originals and read printed dates
+        if: steps.due.outputs.run == 'true'
         id: collect
         continue-on-error: true
         working-directory: ukmo-fax-archive
         run: node scripts/collect-online.cjs
       - name: Retain four runs per valid time and seven days of past charts
+        if: steps.due.outputs.run == 'true'
         working-directory: ukmo-fax-archive
         run: node scripts/retain-archive.cjs
       - name: Validate saved archive
+        if: steps.due.outputs.run == 'true'
         working-directory: ukmo-fax-archive
-        run: node scripts/validate.cjs
+        run: |
+          node scripts/validate.cjs
+          node scripts/test-loading.cjs
       - name: Save images and manifest in repository history
+        if: steps.due.outputs.run == 'true'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -56,6 +79,7 @@ jobs:
             git push origin HEAD:main
           fi
       - name: Check existing publishing configuration
+        if: steps.due.outputs.run == 'true'
         id: pages
         env:
           GH_TOKEN: ${{ github.token }}
@@ -68,23 +92,24 @@ jobs:
           fi
           echo "url=$(jq -r '.html_url' "$RUNNER_TEMP/pages.json")" >> "$GITHUB_OUTPUT"
       - name: Request branch-based Pages rebuild explicitly
-        if: steps.pages.outputs.mode == 'legacy'
+        if: steps.due.outputs.run == 'true' && (steps.pages.outputs.mode == 'legacy')
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds"
       - name: Stage all existing viewers for Actions-based Pages
-        if: steps.pages.outputs.mode == 'workflow'
+        if: steps.due.outputs.run == 'true' && (steps.pages.outputs.mode == 'workflow')
         run: |
           mkdir -p _site
           rsync -a --exclude='.git/' --exclude='.github/' --exclude='node_modules/' --exclude='_site/' --exclude='*.traineddata*' ./ _site/
       - uses: actions/upload-pages-artifact@v3
-        if: steps.pages.outputs.mode == 'workflow'
+        if: steps.due.outputs.run == 'true' && (steps.pages.outputs.mode == 'workflow')
         with:
           path: _site
       - uses: actions/deploy-pages@v4
-        if: steps.pages.outputs.mode == 'workflow'
+        if: steps.due.outputs.run == 'true' && (steps.pages.outputs.mode == 'workflow')
         id: deploy
       - name: Verify public manifest catches up
+        if: steps.due.outputs.run == 'true'
         env:
           SITE_URL: ${{ steps.pages.outputs.url }}
         run: |
@@ -100,21 +125,22 @@ jobs:
           exit 1
       - name: Choose weekly backup
         id: backup
-        if: always()
+        if: steps.due.outputs.run == 'true' && (always())
         run: |
           if [ "$(date -u +%u-%H)" = '7-03' ] || [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             echo 'save=true' >> "$GITHUB_OUTPUT"
           fi
       - uses: actions/upload-artifact@v4
-        if: always() && steps.backup.outputs.save == 'true'
+        if: steps.due.outputs.run == 'true' && (always() && steps.backup.outputs.save == 'true')
         with:
           name: ukmo-fax-backup-${{ github.run_id }}
           path: ukmo-fax-archive/archive/
           retention-days: 90
       - name: Surface incomplete collection
-        if: steps.collect.outcome == 'failure'
+        if: steps.due.outputs.run == 'true' && (steps.collect.outcome == 'failure')
         run: |
           echo 'Some downloads or date readings need attention; successful captures were saved and published.' >&2
           exit 1
+
 
 

@@ -2,7 +2,7 @@
 
 This project is hosted in `matthewhugo81-arch/weather-viewers`, under `ukmo-fax-archive/`.
 
-The repository-level `.github/workflows/ukmo-fax.yml` checks both sources hourly on the hour: 00:00, 01:00, 02:00 and so on, UTC. GitHub schedules may run late. The task uses a cross-platform Node.js collector with Tesseract OCR, rather than the Windows-only local script. Your computer does not need to be running.
+The repository-level `.github/workflows/ukmo-fax.yml` targets hourly collection at :17 UTC, with an additional :47 fallback. Scheduled runs skip collection when the most recent successful check is less than 50 minutes old; push and manual runs always collect. This avoids the busy top-of-hour slot and gives a missed main check another opportunity. GitHub can still delay or drop triggers; this is mitigation, not an exact hourly guarantee. The task uses a cross-platform Node.js collector with Tesseract OCR, rather than the Windows-only local script. Your computer does not need to be running.
 
 ## What is saved
 
@@ -20,7 +20,7 @@ Existing branch-based publishing must use `main` and `/ (root)`. The job checks 
 
 ## Checking operation
 
-Open the repository's **Actions → UKMO FAX online archive**. A green run means collection, validation, archive commit and public-manifest verification succeeded. **Run workflow** performs an immediate collection and also saves an additional backup snapshot. If collection partially fails, successfully downloaded images are still committed and published, then the workflow is marked failed for attention. Unreadable headers stay saved in the review queue.
+Open the repository's **Actions → UKMO FAX online archive**. A green collecting run means collection, validation, archive commit and public-manifest verification succeeded. A recent-check fallback can also finish green with the collection steps skipped; inspect the Decide whether collection is due step. **Run workflow** performs an immediate collection and also saves an additional backup snapshot. If collection partially fails, successfully downloaded images are still committed and published, then the workflow is marked failed for attention. Unreadable headers stay saved in the review queue.
 
 The viewer loads the current JSON snapshot on each hosted page load and shows the snapshot timestamp. No age-based source-check banner is displayed. Refreshing the website retrieves the published archive; it does not itself run collection.
 
@@ -36,4 +36,7 @@ References: [GitHub schedules](https://docs.github.com/en/actions/reference/work
 
 ## Active archive retention
 Each online collection retains the newest four distinct issue times per valid time, preferring Metbrief/Nowster for duplicate source copies, then the latest revision from that source. Valid times older than seven days (UTC, rolling 168 hours) are removed. Future valid times remain. Pending OCR reviews are preserved. Unreferenced PNG files are removed from the active archive. Git commit history and existing backup artifacts retain earlier files: this policy does not rewrite history or cap total Git repository storage. Local PowerShell collection does not apply this online retention step automatically; with Node installed, run node scripts/retain-archive.cjs after local collection.
+
+
+Image navigation uses a per-page cache of immutable chart bytes, shared across panels and neighbour prefetches. A failed request retries once, with an eight-second timeout per attempt, and then presents Retry chart. Prefetching starts after visible charts have loaded. Chart dimensions and original PNGs are unchanged.
 

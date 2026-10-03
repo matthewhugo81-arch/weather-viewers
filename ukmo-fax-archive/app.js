@@ -35,29 +35,40 @@
   else if(current.children.length)$('valid').value=current.children[0].value;
   chosenB='';render();
  }
- const warmImages=new Map();
+ // Cache immutable images as object URLs, shared by visible panels and prefetches.
+ const imageCache=new Map();let preloadTimer;
+ function cachedImage(filename,priority='high'){
+  if(imageCache.has(filename))return imageCache.get(filename);
+  const task=(async()=>{let lastError;for(let attempt=0;attempt<2;attempt++){
+   try{const r=await fetch(filename+(attempt?'?retry=1':''),{signal:AbortSignal.timeout(8000),priority});if(!r.ok)throw Error('HTTP '+r.status);const blob=await r.blob();const signature=new Uint8Array(await blob.slice(0,8).arrayBuffer());if(signature.join(',')!=='137,80,78,71,13,10,26,10')throw Error('Invalid image');return URL.createObjectURL(blob);}catch(e){lastError=e;}
+  }throw lastError;})();
+  imageCache.set(filename,task);task.catch(()=>{if(imageCache.get(filename)===task)imageCache.delete(filename);});return task;
+ }
  function preloadNearby(){
-  const times=[...groups.keys()].sort(),pos=times.indexOf($('valid').value);
-  const candidates=[...(groups.get(times[pos])||[]),...(groups.get(times[pos+1])||[]).slice(0,2),...(groups.get(times[pos-1])||[]).slice(0,2)];
-  for(const c of candidates){if(warmImages.has(c.filename))continue;const img=new Image();img.decoding='async';img.fetchPriority='low';img.src=c.filename;warmImages.set(c.filename,img);}
-  while(warmImages.size>16)warmImages.delete(warmImages.keys().next().value);
+  clearTimeout(preloadTimer);preloadTimer=setTimeout(()=>{
+   const visible=[...document.querySelectorAll('#panels img,#wipeCanvas img')];
+   if(visible.some(i=>!i.complete||!i.naturalWidth))return;
+   const times=[...groups.keys()].sort(),pos=times.indexOf($('valid').value);
+   const candidates=[...(groups.get(times[pos+1])||[]).slice(0,2),...(groups.get(times[pos-1])||[]).slice(0,2)];
+   for(const c of candidates)cachedImage(c.filename,'low').catch(()=>{});
+   // Bound memory without revoking URLs still displayed by a panel.
+   while(imageCache.size>32){const key=imageCache.keys().next().value,task=imageCache.get(key);imageCache.delete(key);task.then(url=>{if(![...document.images].some(i=>i.src===url))URL.revokeObjectURL(url);}).catch(()=>{});}
+  },250);
  }
  function image(c,cls='chart'){
-  const i=document.createElement('img');i.className=cls;i.alt=fmt(c.valid_time)+' valid · run '+fmt(c.issue_time)+' · T+'+c.lead_hours;
-  let attempts=0,timer,statusBox;
+  const i=document.createElement('img');i.className=cls;i.alt=fmt(c.valid_time)+' valid · run '+fmt(c.issue_time)+' · T+'+c.lead_hours;i.decoding='async';i.loading='eager';
+  let statusBox,generation=0;
   const clearStatus=()=>{statusBox?.remove();statusBox=null;};
-  function status(message,retry=false){const frame=i.parentElement;if(!frame)return;clearStatus();const box=document.createElement('div');statusBox=box;box.className='load-status';box.setAttribute('role','status');box.textContent=message;if(retry){const button=document.createElement('button');button.textContent='Retry chart';button.onclick=()=>{attempts=0;start();};box.append(button);}frame.append(box);}
-  function failed(){clearTimeout(timer);if(!i.isConnected)return;if(attempts<2){start();return;}status('Chart could not load. ',true);}
-  function start(){clearTimeout(timer);attempts++;status(attempts===1?'Loading chart…':'Loading chart — retrying…');i.src=c.filename+(attempts>1?'?retry='+Date.now():'');timer=setTimeout(failed,20000);}
+  function status(message,retry=false){const frame=i.parentElement;if(!frame)return;clearStatus();const box=document.createElement('div');statusBox=box;box.className='load-status';box.setAttribute('role','status');box.textContent=message;if(retry){const button=document.createElement('button');button.textContent='Retry chart';button.onclick=()=>{imageCache.delete(c.filename);start();};box.append(button);}frame.append(box);}
+  async function start(){const current=++generation;status('Loading chart…');try{const url=location.protocol==='file:'?c.filename:await cachedImage(c.filename);if(i.isConnected&&current===generation)i.src=url;}catch{if(i.isConnected&&current===generation)status('Chart could not load. ',true);}}
   i.addEventListener('load',()=>{
-   clearTimeout(timer);clearStatus();
+   clearStatus();
    const top=c.source==='metbrief-nowster'&&i.naturalHeight===864?(i.naturalWidth===1076?70:i.naturalWidth===1179?36:0):0;
    const frame=i.parentElement;if(frame){frame.style.aspectRatio=i.naturalWidth+'/'+(i.naturalHeight-top);frame.style.minHeight='0';}
    i.style.transform=top?'translateY(-'+(100*top/i.naturalHeight)+'%)':'none';
-   window.FaxPen?.attach(c,i,top);
+   window.FaxPen?.attach(c,i,top);preloadNearby();
   });
-  i.addEventListener('error',failed);
-  // Attach handlers and the frame before starting even a cached image request.
+  i.addEventListener('error',()=>{imageCache.delete(c.filename);status('Chart could not load. ',true);});
   setTimeout(()=>{if(i.isConnected)start();},0);return i;
  }
  function original(c){const a=document.createElement('a');a.href=c.filename;a.target='_blank';a.rel='noopener';a.textContent='Open original ↗';return a;}
@@ -103,7 +114,7 @@
   $('nextPeriod').disabled=position<0||position>=timeline.length-1;
   $('count').textContent=`${older.length} previous run${older.length===1?'':'s'} saved`;
   $('availability').textContent=!a?'No charts are indexed. Run archive.bat, then reload.':b?`A: latest run ${short(a.issue_time)} (T+${a.lead_hours}). B: ${short(b.issue_time)} (T+${b.lead_hours}). Both valid ${short(a.valid_time)}.`:'Chart A is the latest saved forecast. No earlier run is archived for this valid time yet.';
-  $('wipeArea').hidden=mode!=='wipe';wipe(a,b);window.FaxPen?.sync(mode);setTimeout(preloadNearby,250);
+  $('wipeArea').hidden=mode!=='wipe';wipe(a,b);window.FaxPen?.sync(mode);preloadNearby();
   $('rows').replaceChildren();g.forEach(c=>{const tr=document.createElement('tr');[fmt(c.valid_time),fmt(c.issue_time),'T+'+c.lead_hours,names[c.source]||c.source,fmt(c.download_time)].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.append(td);});const td=document.createElement('td');td.append(original(c));tr.append(td);$('rows').append(tr);});
   const best=[...groups.entries()].sort((a,b)=>b[1].length-a[1].length)[0];$('example').disabled=!best||best[1].length<2;$('exampleInfo').textContent=best&&best[1].length>1?' '+short(best[0]):' No period has previous runs yet.';
  }
@@ -127,4 +138,5 @@
  rebuild();
  if(location.protocol==='https:'||location.protocol==='http:')setInterval(async()=>{try{const r=await fetch('archive/manifest.json?refresh='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(10000)});if(r.ok&&(await r.json()).updated_at!==archive.updated_at&&!window.FaxPen?.busy)location.reload();}catch{}},300000);
 })();
+
 
