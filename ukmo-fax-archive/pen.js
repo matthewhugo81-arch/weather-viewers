@@ -4,7 +4,7 @@
  const colours=['#df1717','#07952b','#174cf0','#9226bf'],names=['Red','Green','Blue','Purple'];
  const bar=document.createElement('div');bar.className='pen-tools';bar.setAttribute('aria-label','Freehand drawing');
  bar.innerHTML='<button id="penToggle" aria-pressed="false">✎ Pen</button><span class="pen-colours"></span><button id="penUndo" disabled>Undo</button><button id="penClear" disabled>Clear chart</button><span id="penHint">Drawings stay in this browser.</span>';
- document.querySelector('.toolbar').after(bar);
+ document.querySelector('.toolbar').insertBefore(bar,document.querySelector('#count'));
  const toggle=bar.querySelector('#penToggle'),undo=bar.querySelector('#penUndo'),clear=bar.querySelector('#penClear'),hint=bar.querySelector('#penHint');
  let enabled=false,colour=colours[0],active=null,busy=false,wipe=false;
  const frames=new Set(),data=new Map(),ns='http://www.w3.org/2000/svg';
