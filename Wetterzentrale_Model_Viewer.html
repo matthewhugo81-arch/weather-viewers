@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Wetterzentrale Run-to-Run Model Viewer v12</title>
+<title>Wetterzentrale Run-to-Run Model Viewer v13</title>
 <style>
 :root{
   --bg:#071018;--panel:#0d1822;--panel2:#132330;--line:#294052;
@@ -16,23 +16,26 @@ button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.55}button:hove
 #app{min-width:0;height:100%;display:grid;grid-template-rows:auto 1fr auto}
 header{background:#0c151e;border-bottom:1px solid var(--line);padding:8px 11px;display:flex;gap:14px;align-items:center;min-height:64px}
 .brand{min-width:280px}.brand h1{font-size:18px;margin:0}.brand .sub{font-size:11px;color:var(--muted);margin-top:2px}
-.toolbar{display:flex;flex-wrap:wrap;gap:7px;align-items:center;flex:1}.group{display:flex;align-items:center;gap:5px;border-left:1px solid #243947;padding-left:8px}.group:first-child{border:0;padding-left:0}
+.toolbar{min-width:0;display:flex;flex-wrap:wrap;gap:7px;align-items:center;flex:1}.group{display:flex;align-items:center;gap:5px;border-left:1px solid #243947;padding-left:8px}.group:first-child{border:0;padding-left:0}
 .label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#84a1b6}.small{font-size:12px;padding:5px 7px}
 #topPrev,#topNext{min-width:34px;padding:5px 7px;font-size:14px;line-height:1.2}
 #speedPlay,#speedStop{min-width:34px;padding:5px 7px;font-size:14px;line-height:1.2}
 #speedPlay{background:#0c5c8f;border-color:#257db0}
-.status{font-size:11px;color:var(--muted);min-width:190px;text-align:right}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warn);margin-right:5px}.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}
+.status{max-width:220px;overflow-wrap:anywhere;font-size:11px;color:var(--muted);min-width:190px;text-align:right}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warn);margin-right:5px}.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}
 main{position:relative;min-height:0;background:#020609;overflow:hidden}
-#singleView{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#singleView{position:absolute;inset:66px 0 30px;display:flex;align-items:center;justify-content:center;overflow:hidden}
 #singleStage{position:absolute;left:0;top:0;transform-origin:center center;will-change:transform}
+#singleImg:not([src]){visibility:hidden}
 #singleImg{display:block;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;pointer-events:none}
 
 
 
 
 
-.overlay{position:absolute;z-index:5;background:rgba(3,9,14,.80);border:1px solid #284355;border-radius:7px;padding:6px 8px;pointer-events:none}
-.topLeft{left:9px;top:9px}.topRight{right:9px;top:9px;text-align:right}.bottomRight{right:9px;bottom:9px;text-align:right}
+.overlay{min-width:0;padding:6px 8px;pointer-events:none}
+#singleInfo{position:absolute;inset:0 0 auto;height:66px;display:flex;justify-content:space-between;gap:12px;background:#0c151e;border-bottom:1px solid #284355;overflow:auto}
+#singleFoot{position:absolute;inset:auto 0 0;height:30px;display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:4px 8px;background:#0c151e;border-top:1px solid #284355;font-size:11px}
+.topRight{text-align:right}
 .big{font-size:14px;font-weight:700}.tiny{font-size:10px;color:var(--muted);margin-top:2px}.valid{font-size:18px;font-weight:800}.warn{color:var(--warn)}
 #empty{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;color:#aec1d0}
 #empty .box{max-width:580px}.emptyTitle{font-size:22px;font-weight:700;margin-bottom:8px}.emptyText{font-size:13px;line-height:1.5;color:#8ea6b8}
@@ -68,7 +71,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 <header>
   <div class="brand">
     <h1>Wetterzentrale • Run-to-Run Viewer</h1>
-    <div class="sub">Run-to-run model cycles • date-checked valid-time matching • Europe • v12</div>
+    <div class="sub">Run-to-run model cycles • date-checked valid-time matching • Europe • v13</div>
   </div>
   <div class="toolbar">
     <div class="group"><span class="label">Mode</span><select id="compareMode">
@@ -116,10 +119,12 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 <main id="viewer">
   <div id="singleView">
     <div id="singleStage"><img id="singleImg" alt="Wetterzentrale model chart"></div>
+  </div>
+  <div id="singleInfo">
     <div class="overlay topLeft"><div class="big" id="modelLabel">GFS</div><div class="tiny" id="varLabel">500 hPa height + MSLP</div></div>
     <div class="overlay topRight"><div class="valid" id="runLabel">00Z • T+96</div><div class="tiny" id="sameValid">Selected valid time</div></div>
-    <div class="overlay bottomRight"><div id="frameLabel">Run 1 / 4</div><div class="tiny" id="imageUrlLabel"></div></div>
   </div>
+  <div id="singleFoot"><span id="frameLabel">Run 1 / 4</span><span id="imageUrlLabel"></span></div>
   <div id="panelView" aria-label="Chart comparison panels"></div>
   <button id="backToPanels">← Back to panels</button>
   <div id="empty"><div class="box"><div class="emptyTitle">No usable maps found</div><div class="emptyText">The requested forecast hour may not be generated by Wetterzentrale for this model/run combination.</div></div></div>
@@ -216,7 +221,7 @@ function candidate(key,run,lead,init,age=0,sameLead=false){
 }
 function buildFrames(){
  if(!state.index&&e.refresh.disabled){state.userSelected=true;setEmptyText('Checking model dates…','Your selection will load when the availability check arrives.');e.empty.style.display='flex';status('Checking model dates…');return;}
- stop();resetZoom();state.generation++;const gen=state.generation;
+ cancelImageLoads();stop();resetZoom();state.generation++;const gen=state.generation;
  const all=e.compareMode.value==='allmodels',run=+e.refRun.value,lead=+e.lead.value;
  const init=state.referenceInit!==null&&new Date(state.referenceInit).getUTCHours()===run?state.referenceInit:nominalRun(run);
  state.referenceInit=init;
@@ -230,13 +235,13 @@ function buildFrames(){
  e.modelLabel.textContent=all?'All models':MODELS[e.model.value].name;e.varLabel.textContent=VARS[+e.variable.value];
  e.runLabel.textContent=`${padRun(run)}Z • T+${padLead(lead)}`;e.sameValid.textContent='Reference: '+dateText(init+lead*HOUR);
  e.empty.style.display='none';renderRunBar();
- const pending=state.frames.filter(f=>f.ok===null);
+ const pending=state.frames.filter(f=>f.ok===null);if(!all)pending.reverse();
  if(!pending.length){showEmpty();status(freshIndex()?'No verified maps for this selection':state.indexError||'Date check is out of date','bad');return}
  setEmptyText('Loading charts…','Verified maps will appear as soon as each image is ready.');e.empty.style.display=$('displayView').value==='panels'?'none':'flex';
  status(`Loading ${pending.length} date-checked charts…`);
  let done=0;
  for(const f of pending)loadImage(f.url).then(ok=>{
-  if(gen!==state.generation)return;f.ok=ok;if(!ok)f.reason='Image did not load after retry';done++;
+  if(gen!==state.generation)return;f.ok=ok;if(ok)f.url=imageCache.get(f.url)?.image.src||f.url;else f.reason='Image did not load after retry';done++;
   renderRunBar();const u=usable();
   if(u.length){e.empty.style.display='none';if(!e.singleImg.getAttribute('src')||state.frames[state.idx]?.ok!==true)showFrame(u[0]);}
   if(done===pending.length){
@@ -245,14 +250,41 @@ function buildFrames(){
   }
  });
 }
-const imageCache=new Map();
+const imageCache=new Map();let activeImages=0,cancellingImages=false;const imageQueue=[];
+function cancelImageLoads(){
+ cancellingImages=true;imageQueue.length=0;
+ for(const [url,entry] of imageCache)if(!entry.ready){imageCache.delete(url);entry.cancel();}
+ cancellingImages=false;
+}
+function trimImageCache(){
+ let count=[...imageCache.values()].filter(x=>x.ready).length;
+ for(const [url,entry] of imageCache){if(count<=32)break;if(!entry.ready||state.frames.some(f=>f.url===url||f.url===entry.image.src))continue;imageCache.delete(url);entry.image.src='';count--;}
+}
+function pumpImages(){
+ while(!cancellingImages&&activeImages<4&&imageQueue.length){const job=imageQueue.shift();if(!job.cancelled)job.start();}
+}
 function loadImage(url){
- if(imageCache.has(url))return imageCache.get(url);
- const attempt=()=>new Promise(resolve=>{const im=new Image();let settled=false;const finish=ok=>{if(settled)return;settled=true;clearTimeout(timer);im.onload=im.onerror=null;resolve(ok)};const timer=setTimeout(()=>{finish(false);im.src=''},8000);im.onload=()=>finish(im.naturalWidth===959&&im.naturalHeight===741);im.onerror=()=>finish(false);im.src=url;if(im.complete&&im.naturalWidth)finish(im.naturalWidth===959&&im.naturalHeight===741);});
- const request=attempt().then(ok=>ok?true:attempt()).then(ok=>{if(!ok)imageCache.delete(url);return ok});imageCache.set(url,request);return request;
+ if(imageCache.has(url))return imageCache.get(url).promise;
+ let resolve;const entry={ready:false,cancelled:false,image:null,promise:new Promise(r=>resolve=r),cancel(){}};
+ imageCache.set(url,entry);let attempts=0,timer,active=false;
+ const finish=(ok,cancelled=false)=>{
+  clearTimeout(timer);if(entry.image){entry.image.onload=entry.image.onerror=null;if(!ok)entry.image.src='';}
+  if(active){active=false;activeImages--;}
+  if(!ok&&!cancelled&&attempts<2){imageQueue.push(entry);pumpImages();return;}
+  entry.ready=ok;entry.cancelled=cancelled;if(!ok&&imageCache.get(url)===entry)imageCache.delete(url);
+  if(ok)trimImageCache();resolve(ok);pumpImages();
+ };
+ entry.cancel=()=>{if(entry.ready||entry.cancelled)return;entry.cancelled=true;finish(false,true);};
+ entry.start=()=>{
+  active=true;activeImages++;attempts++;const im=entry.image=new Image();
+  timer=setTimeout(()=>finish(false),30000);
+  im.onload=()=>finish(im.naturalWidth===959&&im.naturalHeight===741);im.onerror=()=>finish(false);im.src=attempts===1?url:url+'?retry='+Date.now();
+  if(im.complete&&im.naturalWidth)finish(im.naturalWidth===959&&im.naturalHeight===741);
+ };
+ imageQueue.push(entry);pumpImages();return entry.promise;
 }
 async function reload(autoLatest=false){
- stop();state.generation++;const request=++state.request,previousIndex=freshIndex()?state.index:null;e.refresh.disabled=true;status('Checking model dates…');
+ cancelImageLoads();stop();state.generation++;const request=++state.request,previousIndex=freshIndex()?state.index:null;e.refresh.disabled=true;status('Checking model dates…');
  try{
   const r=await fetch('wetterzentrale/availability.json?check='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('Date index unavailable');
   const index=await r.json();if(index.schema!==1||index.ceiling!==240||!index.charts)throw Error('Invalid date index');state.index=index;state.indexError='';
@@ -317,7 +349,7 @@ const displayView=$('displayView'),panelView=$('panelView'),backToPanels=$('back
 let panelGeneration=-1,panelExpanded=false;
 function updatePanelDisplay(){
  const panels=displayView.value==='panels'&&!panelExpanded;
- panelView.style.display=panels?'grid':'none';e.singleView.style.display=panels?'none':'flex';backToPanels.style.display=displayView.value==='panels'&&panelExpanded?'block':'none';
+ panelView.style.display=panels?'grid':'none';e.singleView.style.display=panels?'none':'flex';$('singleInfo').style.display=$('singleFoot').style.display=panels?'none':'flex';backToPanels.style.display=displayView.value==='panels'&&panelExpanded?'block':'none';
  if(!usable().length)e.empty.style.display='flex';
  [...panelView.children].forEach((tile,i)=>tile.classList.toggle('selected',+tile.dataset.frame===state.idx));
 }
