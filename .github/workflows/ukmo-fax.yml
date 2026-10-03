@@ -122,6 +122,16 @@ jobs:
       - name: Stage all existing viewers for Actions-based Pages
         if: steps.pages.outputs.mode == 'workflow'
         run: |
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const m=JSON.parse(fs.readFileSync('wetterzentrale/availability.json','utf8'));
+          if(m.schema!==1||m.ceiling!==240||!Object.keys(m.charts).length)throw Error('Verified chart snapshot is missing');
+          for(const c of Object.values(m.charts)){
+            if(!/^[a-f0-9]{64}$/.test(c.sha))throw Error('Invalid snapshot filename');
+            const bytes=fs.readFileSync('wetterzentrale/charts/'+c.sha+'.png');
+            if(crypto.createHash('sha256').update(bytes).digest('hex')!==c.sha)throw Error('Snapshot content hash mismatch');
+          }
+          NODE
           mkdir -p _site
           rsync -a --exclude='.git/' --exclude='.github/' --exclude='node_modules/' --exclude='_site/' --exclude='*.traineddata*' ./ _site/
       - uses: actions/upload-pages-artifact@v3
