@@ -41,6 +41,24 @@ function header(bytes){
  }
  return PNG.sync.write(out);
 }
+async function recognizeDates(worker,bytes,run,lead){
+ const size=await sharp(bytes).metadata();if(size.width!==959||size.height!==741)throw Error('Unknown chart layout');
+ const strip=(left,width,scale)=>sharp(bytes).extract({left,top:0,width,height:16}).resize(width*scale,16*scale).extend({top:20,bottom:20,left:20,right:20,background:'white'}).png().toBuffer();
+ let error;
+ const read=async image=>{const {data}=await worker.recognize(image);return readDates(data.text,run,lead);};
+ try{return await read(await strip(0,959,3));}catch(e){error=e;}
+ try{return await read(header(bytes));}catch(e){error=e;}
+ // The fixed layout also allows the two date fields to be read separately,
+ // avoiding interference from the different variable titles between them.
+ for(const scale of [4,5])try{
+  const a=await worker.recognize(await strip(0,235,scale)),b=await worker.recognize(await strip(725,234,scale));
+  const fragment=s=>s.match(/\b[A-Za-z]{3,4}[,.]\s*[^]*$/)?.[0];
+  const initial=fragment(a.data.text),valid=fragment(b.data.text);if(!initial||!valid)throw Error('Unreadable printed date fields');
+  return readDates('Init: '+initial.trim()+' Valid: '+valid.trim(),run,lead);
+ }catch(e){error=e;}
+ for(const scale of [2,5,6])try{return await read(await strip(0,959,scale));}catch(e){error=e;}
+ throw error;
+}
 async function request(url,options={}){
  let error;for(let n=0;n<3;n++)try{
   const r=await fetch(url,{...options,signal:AbortSignal.timeout(20000),redirect:'error'});
@@ -71,7 +89,7 @@ async function collect(root=__dirname){
      const object=path.join(objects,sha+'.png');if(!fs.existsSync(object))fs.writeFileSync(object,bytes);
      if(previous?.sha===sha&&previous.init)result.charts[job.name]={...previous,etag:response.headers.get('etag')};
      else{
-      let dates;try{const size=await sharp(bytes).metadata();if(size.width!==959||size.height!==741)throw Error('Unknown chart layout');const strip=await sharp(bytes).extract({left:0,top:0,width:959,height:16}).resize(2877,48).extend({top:20,bottom:20,left:20,right:20,background:'white'}).png().toBuffer();const {data}=await worker.recognize(strip);dates=readDates(data.text,job.run,job.lead);}catch(e){const {data}=await worker.recognize(header(bytes));dates=readDates(data.text,job.run,job.lead);}
+      const dates=await recognizeDates(worker,bytes,job.run,job.lead);
       result.charts[job.name]={...dates,etag:response.headers.get('etag'),sha,method:'printed-header-ocr'};changed++;
      }
     }
@@ -87,5 +105,5 @@ async function collect(root=__dirname){
  const keep=new Set(Object.values(result.charts).map(c=>c.sha+'.png'));for(const file of fs.readdirSync(objects))if(/^[a-f0-9]{64}\.png$/.test(file)&&!keep.has(file))fs.unlinkSync(path.join(objects,file));
  console.log(JSON.stringify(result.summary));return result;
 }
-module.exports={readDates,header,collect,stamp};
+module.exports={readDates,header,recognizeDates,collect,stamp};
 if(require.main===module)collect().catch(e=>{console.error(e);process.exitCode=1;});
