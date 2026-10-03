@@ -8,7 +8,9 @@ The collector reads the initialisation and valid dates printed on each PNG, chec
 
 ## Publishing
 
-Before merging this update, set **Settings → Pages → Build and deployment → Source → GitHub Actions**. The existing `.github/workflows/ukmo-fax.yml` remains the single site publisher and preserves the UKMO FAX collection and retention rules. Its schedule checks Wetterzentrale approximately every 30 minutes. A source failure retains the previous snapshot; an index over 75 minutes old is withheld by the viewer. GitHub schedules are best effort.
+Pages must use **Settings → Pages → Build and deployment → Source → GitHub Actions**. The existing `.github/workflows/ukmo-fax.yml` remains the single site publisher and preserves the UKMO FAX collection and retention rules. It schedules Wetterzentrale checks every 10 minutes; the FAX due check still limits archive collection to approximately hourly. Collection and deployment add latency, and GitHub schedules are best effort. This is not a real-time source feed.
+
+The viewer polls the published index every minute and when the tab becomes visible. Missing charts and charts still indexed under another run date are labelled “awaiting verification”, rather than implying the source has no image. Reload only fetches the published index. An index over 25 minutes old carries a delay warning; exact dated snapshots remain usable for up to six hours. Older indices are rejected.
 
 To publish immediately after changing Pages settings, run **Weather charts and UKMO FAX archive** from the Actions tab. The first run downloads and reads all configured charts; subsequent runs use conditional requests and cached verified copies. OCR can conservatively exclude a chart when its printed header cannot be read reliably. The generated index reports those filenames and reasons.
 

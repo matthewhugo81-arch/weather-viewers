@@ -139,13 +139,13 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 
 <aside id="drawer">
   <h2>How this viewer works</h2>
-  <div class="note">Charts are checked against the initialisation and valid dates printed on Wetterzentrale images. The availability check runs approximately every 30 minutes; uncertain dates and charts from a different run date are excluded. A green status means both the indexed dates and image loading passed. The displayed copies are fixed at the check time, so a source update cannot change their dates mid-comparison. Forecasts stop at <b>T+240</b>.</div>
+  <div class="note">Charts are checked against the initialisation and valid dates printed on Wetterzentrale images. Availability checks are scheduled every 10 minutes, plus collection and publishing time; GitHub may delay scheduled jobs. Uncertain dates and charts from a different run date are excluded. A green status means both the indexed dates and image loading passed. The displayed copies are fixed at the check time, so a source update cannot change their dates mid-comparison. Forecasts stop at <b>T+240</b>.</div>
   <h3>Runs and forecast hours</h3>
   <div class="note">UKMO EU: 00/12Z through T+168; 06/18Z through T+66. ICON: 00/12Z through T+180; 06/18Z through T+120. ECMWF: 00/12Z every 6 hours through T+144, then daily through T+240; 06/18Z through T+144. GFS, GFS ENS and AIFS: 6-hour steps through T+240. GEM: 00/12Z, 6-hour steps through T+240. EC ENS: 00/12Z, daily steps through T+240.</div>
   <h3>Comparison dates</h3>
   <div class="note">History uses the previous stored cycle slots with the same valid date, where an exact forecast step is supported. <b>EC ENS history uses the same forecast lead</b> and labels the resulting earlier valid date explicitly. All-model comparisons require the same initialisation date and valid date. Unavailable models are listed in the buttons below; panels show only loaded charts together. A model awaiting that dated run is marked unavailable, even if a previous day's image exists. Direct cycle filenames are rotating slots, so arbitrary 24/48-hour archive selections are not offered.</div>
   <h3>Availability and reload</h3>
-  <div class="note">The date index refreshes automatically every five minutes. If publication is delayed, verified snapshots remain available for up to 6 hours with a warning and their actual dates; newer runs may be missing until publication resumes. Reload fetches the date index again and checks and displays the same verified chart copy. Publication can be partial while a run is updating. See <a href="wetterzentrale/availability.json" target="_blank" rel="noopener" style="color:var(--accent)">latest availability check</a>.</div>
+  <div class="note">The date index refreshes automatically every minute. “Awaiting verification” means the requested chart is not yet in the published index, even if it is already visible at Wetterzentrale. Reload fetches that index again; it does not start a source check. If publication is delayed by over 25 minutes, verified snapshots remain available for up to 6 hours with a warning and their actual dates. Publication can be partial while a run is updating. See <a href="wetterzentrale/availability.json" target="_blank" rel="noopener" style="color:var(--accent)">latest availability check</a>.</div>
   <h3>Display</h3>
   <div class="formRow"><label>Animation mode</label><select id="animMode"><option value="forward" selected>Forward then restart</option><option value="rock">Rock back and forth</option></select></div>
   <div class="formRow"><label>Latest-frame hold</label><select id="hold"><option value="0">0 s</option><option value="750" selected>0.75 s</option><option value="1500">1.5 s</option><option value="2500">2.5 s</option></select></div>
@@ -171,7 +171,7 @@ function status(t,type='warn'){e.statusText.textContent=t;e.statusDot.className=
 function cycleAge(ref,run){return (ref-run+24)%24}
 function nominalRun(run){const d=new Date();d.setUTCHours(run,0,0,0);if(+d>Date.now())d.setUTCDate(d.getUTCDate()-1);return +d}
 const imageSession=Date.now().toString(36);
-function indexDelayed(){return Date.now()-Date.parse(state.index?.checkedAt)>75*60000}
+function indexDelayed(){return Date.now()-Date.parse(state.index?.checkedAt)>25*60000}
 function freshIndex(){const age=Date.now()-Date.parse(state.index?.checkedAt);return state.index?.schema===1&&age>=-5*60000&&age<=MAX_INDEX_AGE}
 function setEmptyText(title,text){e.empty.querySelector('.emptyTitle').textContent=title;e.empty.querySelector('.emptyText').textContent=text}
 function showEmpty(){e.empty.style.display='flex';e.singleImg.removeAttribute('src');setEmptyText('No verified maps for this selection',state.indexError||state.frames.map(f=>f.model+': '+f.reason).join(' • '))}
@@ -206,7 +206,7 @@ function chooseLatest(){
 }
 function candidate(key,run,lead,init,age=0,sameLead=false){
  const m=MODELS[key],v=+e.variable.value,valid=init+lead*HOUR;
- const f={key,model:m.name,run,lead,age,init,valid,sameLead,ok:false,reason:'',url:''};
+ const f={key,model:m.name,run,lead,age,init,valid,sameLead,ok:false,awaitingVerification:false,reason:'',url:''};
  if(!m.cycles.includes(run))f.reason='This model does not supply this cycle';
  else if(!m.vars.includes(v))f.reason='Variable not supplied';
  else if(lead>240)f.reason='Beyond the T+240 comparison ceiling';
@@ -214,8 +214,8 @@ function candidate(key,run,lead,init,age=0,sameLead=false){
  else if(!freshIndex())f.reason=state.indexError||'Date check is out of date';
  else{
   const name=filename(key,run,lead,v),record=state.index.charts[name];
-  if(!record)f.reason='Not yet available with verified chart dates';
-  else if(Date.parse(record.init)!==init||Date.parse(record.valid)!==valid)f.reason=`Different stored date: ${dateText(record.init)}`;
+  if(!record){f.awaitingVerification=true;f.reason='Awaiting verification in the published index; source imagery may already be available';}
+  else if(Date.parse(record.init)!==init||Date.parse(record.valid)!==valid){f.awaitingVerification=true;f.reason=`Different stored date: ${dateText(record.init)}; awaiting verification of the requested run`;}
   else if(!/^[a-f0-9]{64}$/.test(record.sha))f.reason='Invalid verified chart reference';
   else{f.ok=null;f.url='wetterzentrale/charts/'+record.sha+'.png?session='+imageSession;}
  }
@@ -248,7 +248,7 @@ function buildFrames(){
   if(u.length){e.empty.style.display='none';if(!e.singleImg.getAttribute('src')||state.frames[state.idx]?.ok!==true)showFrame(u[0]);}
   if(done===pending.length){
    if(!u.length){showEmpty();setEmptyText('Image loading failed','These chart dates are verified, but the image requests failed. Use Reload to retry.');status('Image requests failed — use Reload to retry','bad');}
-   else{showFrame(all?state.idx:u[u.length-1]);status(`${u.length}/${state.frames.length} verified • checked ${dateText(state.index.checkedAt)}${indexDelayed()?' • update delayed; showing dated snapshots':''}`,indexDelayed()?'warn':'ok');}
+   else{const waiting=state.frames.some(f=>f.awaitingVerification);showFrame(all?state.idx:u[u.length-1]);status(`${u.length}/${state.frames.length} verified • checked ${dateText(state.index.checkedAt)}${waiting?' • awaiting verification of requested charts':''}${indexDelayed()?' • update delayed; showing dated snapshots':''}`,waiting||indexDelayed()?'warn':'ok');}
   }
  });
 }
@@ -309,7 +309,7 @@ function renderRunBar(){
  e.runBar.replaceChildren();state.frames.forEach((f,i)=>{
   const b=document.createElement('button');b.className='runBtn';b.disabled=f.ok!==true;
   const title=document.createElement('div');title.className='r1';title.textContent=e.compareMode.value==='allmodels'?f.model:`${padRun(f.run)}Z • T+${padLead(f.lead)}`;
-  const detail=document.createElement('div');detail.className='r2';detail.textContent=f.ok===true?'date checked • ready':f.ok===null?'loading…':f.reason.startsWith('Required T+')?'cycle ends T+'+modelLeads(f.key,f.run).at(-1):f.reason.startsWith('Beyond')?'above T+240':'unavailable';
+  const detail=document.createElement('div');detail.className='r2';detail.textContent=f.ok===true?'date checked • ready':f.ok===null?'loading…':f.awaitingVerification?'awaiting verification':f.reason.startsWith('Required T+')?'cycle ends T+'+modelLeads(f.key,f.run).at(-1):f.reason.startsWith('Beyond')?'above T+240':'unavailable';
   b.title=f.reason||`Init ${dateText(f.init)}; valid ${dateText(f.valid)}`;b.append(title,detail);b.onclick=()=>{stop();showFrame(i)};e.runBar.append(b);
  });renderPanels();
 }
@@ -406,7 +406,7 @@ async function refreshIndex(){
  }catch(error){if(state.index)status('Refresh unavailable • showing dated snapshots from '+dateText(state.index.checkedAt),'warn');}
  finally{backgroundRefreshing=false;}
 }
-setInterval(refreshIndex,5*60000);
+setInterval(refreshIndex,60000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshIndex()});
 updateModeUI();populateLeadOptions();reload(true);
 })();
