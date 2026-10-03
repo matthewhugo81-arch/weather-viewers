@@ -13,7 +13,7 @@ const ids=new Set();for(const c of [...manifest.charts,...manifest.pending]){
  if(c.valid_time!==null)assert.equal(Date.parse(c.valid_time)-Date.parse(c.issue_time),c.lead_hours*3600000);
 }
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
-for(const m of html.matchAll(/(?:src|href)="([^"#]+)"/g)){if(/^(https:|data:)/.test(m[1]))continue;assert(fs.existsSync(path.join(root,m[1])),`Missing link ${m[1]}`);}
+for(const m of html.matchAll(/(?:src|href)="([^"#]+)"/g)){if(/^(https:|data:)/.test(m[1]))continue;assert(fs.existsSync(path.join(root,m[1].split(/[?#]/)[0])),`Missing link ${m[1]}`);}
 const app=fs.readFileSync(path.join(root,'app.js'),'utf8');new vm.Script(app);
 for(const m of app.matchAll(/\$\('([^']+)'\)/g)) assert(html.includes(`id="${m[1]}"`),`Missing control ${m[1]}`);
 console.log(`PASS: ${ids.size} image hashes, all timestamps, unique IDs, companion manifest, JS syntax, controls and local links.`);
