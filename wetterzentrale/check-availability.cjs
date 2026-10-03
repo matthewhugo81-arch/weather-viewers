@@ -66,13 +66,12 @@ async function request(url,options={}){
  }catch(e){error=e;if(n<2)await new Promise(r=>setTimeout(r,1000*(n+1)));}throw error;
 }
 function pruneSnapshots(objects,keep,now=Date.now()){
- // Keep retired copies longer than the viewer's 75-minute index lifetime.
- // An open page can then finish using its old, still-valid date index safely.
+ // Keep retired copies beyond the viewer's 6-hour snapshot fallback window.
  for(const file of fs.readdirSync(objects)){
   if(!/^[a-f0-9]{64}\.png$/.test(file))continue;
   const object=path.join(objects,file);
   if(keep.has(file))fs.utimesSync(object,now/1000,now/1000);
-  else if(fs.statSync(object).mtimeMs<now-90*60000)fs.unlinkSync(object);
+  else if(fs.statSync(object).mtimeMs<now-8*3600000)fs.unlinkSync(object);
  }
 }
 async function collect(root=__dirname){

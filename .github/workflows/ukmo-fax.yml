@@ -179,5 +179,5 @@ jobs:
       - name: Surface a failed model-date check
         if: steps.wetterzentrale.outcome == 'failure'
         run: |
-          echo 'The model-date check failed. Any previous snapshot was retained; the viewer withholds stale date checks.' >&2
+          echo 'The model-date check failed. Any previous snapshot was retained; the viewer labels delayed snapshots with their actual dates.' >&2
           exit 1

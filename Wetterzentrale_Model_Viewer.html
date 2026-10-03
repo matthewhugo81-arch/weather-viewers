@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Wetterzentrale Run-to-Run Model Viewer v14</title>
+<title>Wetterzentrale Run-to-Run Model Viewer v15</title>
 <style>
 :root{
   --bg:#071018;--panel:#0d1822;--panel2:#132330;--line:#294052;
@@ -71,7 +71,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 <header>
   <div class="brand">
     <h1>Wetterzentrale • Run-to-Run Viewer</h1>
-    <div class="sub">Run-to-run model cycles • date-checked valid-time matching • Europe • v14</div>
+    <div class="sub">Run-to-run model cycles • date-checked valid-time matching • Europe • v15</div>
   </div>
   <div class="toolbar">
     <div class="group"><span class="label">Mode</span><select id="compareMode">
@@ -145,7 +145,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
   <h3>Comparison dates</h3>
   <div class="note">History uses the previous stored cycle slots with the same valid date, where an exact forecast step is supported. <b>EC ENS history uses the same forecast lead</b> and labels the resulting earlier valid date explicitly. All-model comparisons require the same initialisation date and valid date. Unavailable models are listed in the buttons below; panels show only loaded charts together. A model awaiting that dated run is marked unavailable, even if a previous day's image exists. Direct cycle filenames are rotating slots, so arbitrary 24/48-hour archive selections are not offered.</div>
   <h3>Availability and reload</h3>
-  <div class="note">If the date index is missing or over 75 minutes old, charts are withheld until a fresh check is available. Reload fetches the date index again and checks and displays the same verified chart copy. Publication can be partial while a run is updating. See <a href="wetterzentrale/availability.json" target="_blank" rel="noopener" style="color:var(--accent)">latest availability check</a>.</div>
+  <div class="note">The date index refreshes automatically every five minutes. If publication is delayed, verified snapshots remain available for up to 6 hours with a warning and their actual dates; newer runs may be missing until publication resumes. Reload fetches the date index again and checks and displays the same verified chart copy. Publication can be partial while a run is updating. See <a href="wetterzentrale/availability.json" target="_blank" rel="noopener" style="color:var(--accent)">latest availability check</a>.</div>
   <h3>Display</h3>
   <div class="formRow"><label>Animation mode</label><select id="animMode"><option value="forward" selected>Forward then restart</option><option value="rock">Rock back and forth</option></select></div>
   <div class="formRow"><label>Latest-frame hold</label><select id="hold"><option value="0">0 s</option><option value="750" selected>0.75 s</option><option value="1500">1.5 s</option><option value="2500">2.5 s</option></select></div>
@@ -162,7 +162,7 @@ const $=id=>document.getElementById(id),e={};
 if(!window.WZModels){e.statusText.textContent='Model configuration did not load; refresh the page';e.empty.style.display='flex';return;}
 const {models:MODELS,order:MODEL_ORDER,leads:modelLeads,filename}=window.WZModels;
 const VARS={1:'500 hPa height + MSLP',2:'850 hPa temperature',34:'850 hPa Temp. Deviation',21:'300 hPa Wind'};
-const HOUR=3600000,MAX_INDEX_AGE=75*60000;
+const HOUR=3600000,MAX_INDEX_AGE=6*HOUR;
 const state={frames:[],idx:0,playing:false,timer:null,dir:1,zoom:1,panX:0,panY:0,baseW:0,baseH:0,drag:false,start:null,generation:0,index:null,indexError:'',referenceInit:null,request:0};
 const padRun=n=>String(n).padStart(2,'0'),padLead=n=>String(n).padStart(2,'0');
 const dateText=n=>new Date(n).toLocaleString('en-GB',{timeZone:'UTC',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})+' UTC';
@@ -170,6 +170,8 @@ function toast(t){e.toast.textContent=t;e.toast.classList.add('show');setTimeout
 function status(t,type='warn'){e.statusText.textContent=t;e.statusDot.className='dot '+(type==='ok'?'ok':type==='bad'?'bad':'')}
 function cycleAge(ref,run){return (ref-run+24)%24}
 function nominalRun(run){const d=new Date();d.setUTCHours(run,0,0,0);if(+d>Date.now())d.setUTCDate(d.getUTCDate()-1);return +d}
+const imageSession=Date.now().toString(36);
+function indexDelayed(){return Date.now()-Date.parse(state.index?.checkedAt)>75*60000}
 function freshIndex(){const age=Date.now()-Date.parse(state.index?.checkedAt);return state.index?.schema===1&&age>=-5*60000&&age<=MAX_INDEX_AGE}
 function setEmptyText(title,text){e.empty.querySelector('.emptyTitle').textContent=title;e.empty.querySelector('.emptyText').textContent=text}
 function showEmpty(){e.empty.style.display='flex';e.singleImg.removeAttribute('src');setEmptyText('No verified maps for this selection',state.indexError||state.frames.map(f=>f.model+': '+f.reason).join(' • '))}
@@ -208,14 +210,14 @@ function candidate(key,run,lead,init,age=0,sameLead=false){
  if(!m.cycles.includes(run))f.reason='This model does not supply this cycle';
  else if(!m.vars.includes(v))f.reason='Variable not supplied';
  else if(lead>240)f.reason='Beyond the T+240 comparison ceiling';
- else if(!modelLeads(key,run).includes(lead))f.reason='Forecast hour not supplied for this cycle';
+ else if(!modelLeads(key,run).includes(lead))f.reason=`Required T+${lead} is not supplied; this cycle ends at T+${modelLeads(key,run).at(-1)}`;
  else if(!freshIndex())f.reason=state.indexError||'Date check is out of date';
  else{
   const name=filename(key,run,lead,v),record=state.index.charts[name];
   if(!record)f.reason='Not yet available with verified chart dates';
   else if(Date.parse(record.init)!==init||Date.parse(record.valid)!==valid)f.reason=`Different stored date: ${dateText(record.init)}`;
   else if(!/^[a-f0-9]{64}$/.test(record.sha))f.reason='Invalid verified chart reference';
-  else{f.ok=null;f.url='wetterzentrale/charts/'+record.sha+'.png';}
+  else{f.ok=null;f.url='wetterzentrale/charts/'+record.sha+'.png?session='+imageSession;}
  }
  return f;
 }
@@ -231,7 +233,7 @@ function buildFrames(){
   state.frames=m.cycles.map(r=>({run:r,age:cycleAge(run,r)})).sort((a,b)=>b.age-a.age)
    .map(x=>candidate(key,x.run,m.historySameLead?lead:lead+x.age,init-x.age*HOUR,x.age,!!m.historySameLead));
  }
- state.idx=all?0:state.frames.length-1;e.singleImg.removeAttribute('src');
+ state.idx=all?0:state.frames.length-1;e.singleImg.removeAttribute('src');e.frameLabel.textContent='';e.imageUrlLabel.textContent='';
  e.modelLabel.textContent=all?'All models':MODELS[e.model.value].name;e.varLabel.textContent=VARS[+e.variable.value];
  e.runLabel.textContent=`${padRun(run)}Z • T+${padLead(lead)}`;e.sameValid.textContent='Reference: '+dateText(init+lead*HOUR);
  e.empty.style.display='none';renderRunBar();
@@ -246,7 +248,7 @@ function buildFrames(){
   if(u.length){e.empty.style.display='none';if(!e.singleImg.getAttribute('src')||state.frames[state.idx]?.ok!==true)showFrame(u[0]);}
   if(done===pending.length){
    if(!u.length){showEmpty();setEmptyText('Image loading failed','These chart dates are verified, but the image requests failed. Use Reload to retry.');status('Image requests failed — use Reload to retry','bad');}
-   else{showFrame(all?state.idx:u[u.length-1]);status(`${u.length}/${state.frames.length} verified • checked ${dateText(state.index.checkedAt)}`,'ok');}
+   else{showFrame(all?state.idx:u[u.length-1]);status(`${u.length}/${state.frames.length} verified • checked ${dateText(state.index.checkedAt)}${indexDelayed()?' • update delayed; showing dated snapshots':''}`,indexDelayed()?'warn':'ok');}
   }
  });
 }
@@ -276,9 +278,9 @@ function loadImage(url){
  };
  entry.cancel=()=>{if(entry.ready||entry.cancelled)return;entry.cancelled=true;finish(false,true);};
  entry.start=()=>{
-  active=true;activeImages++;attempts++;const im=entry.image=new Image();
+  active=true;activeImages++;attempts++;const im=entry.image=new Image();im.fetchPriority="high";
   timer=setTimeout(()=>finish(false),30000);
-  im.onload=()=>finish(im.naturalWidth===959&&im.naturalHeight===741);im.onerror=()=>finish(false);im.src=attempts===1?url:url+'?retry='+Date.now();
+  im.onload=()=>finish(im.naturalWidth===959&&im.naturalHeight===741);im.onerror=()=>finish(false);im.src=attempts===1?url:url+(url.includes('?')?'&':'?')+'retry='+Date.now();
   if(im.complete&&im.naturalWidth)finish(im.naturalWidth===959&&im.naturalHeight===741);
  };
  imageQueue.push(entry);pumpImages();return entry.promise;
@@ -288,7 +290,7 @@ async function reload(autoLatest=false){
  try{
   const r=await fetch('wetterzentrale/availability.json?check='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('Date index unavailable');
   const index=await r.json();if(index.schema!==1||index.ceiling!==240||!index.charts)throw Error('Invalid date index');state.index=index;state.indexError='';
-  if(!freshIndex())throw Error('Availability check is over 75 minutes old; waiting for a fresh check');
+  if(!freshIndex())throw Error('Availability index is over 6 hours old; waiting for a fresh check');
  }catch(err){state.index=previousIndex;if(freshIndex()){state.indexError='';toast('Using the recent date check; refresh request failed')}else{state.index=null;state.indexError=err.message;}}
  if(request!==state.request)return;
  e.refresh.disabled=false;state.referenceInit=nominalRun(+e.refRun.value);updateModeUI();populateLeadOptions();if(autoLatest&&!state.userSelected)chooseLatest();buildFrames();
@@ -307,7 +309,7 @@ function renderRunBar(){
  e.runBar.replaceChildren();state.frames.forEach((f,i)=>{
   const b=document.createElement('button');b.className='runBtn';b.disabled=f.ok!==true;
   const title=document.createElement('div');title.className='r1';title.textContent=e.compareMode.value==='allmodels'?f.model:`${padRun(f.run)}Z • T+${padLead(f.lead)}`;
-  const detail=document.createElement('div');detail.className='r2';detail.textContent=f.ok===true?'date checked • ready':f.ok===null?'loading…':'unavailable';
+  const detail=document.createElement('div');detail.className='r2';detail.textContent=f.ok===true?'date checked • ready':f.ok===null?'loading…':f.reason.startsWith('Required T+')?'cycle ends T+'+modelLeads(f.key,f.run).at(-1):f.reason.startsWith('Beyond')?'above T+240':'unavailable';
   b.title=f.reason||`Init ${dateText(f.init)}; valid ${dateText(f.valid)}`;b.append(title,detail);b.onclick=()=>{stop();showFrame(i)};e.runBar.append(b);
  });renderPanels();
 }
@@ -387,8 +389,25 @@ e.topPrev.onclick=()=>stepTplus(-1);e.topNext.onclick=()=>stepTplus(1);
 e.settings.onclick=()=>e.drawer.classList.add('open');e.closeDrawer.onclick=()=>e.drawer.classList.remove('open');
 e.fullscreen.onclick=()=>{const action=document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();action?.catch(()=>toast('Full screen is unavailable in this browser'))};
 document.addEventListener('keydown',ev=>{if(['INPUT','SELECT'].includes(document.activeElement.tagName))return;if(ev.code==='Space'){ev.preventDefault();state.playing?stop():play()}else if(ev.key==='ArrowLeft'){stop();step(-1)}else if(ev.key==='ArrowRight'){stop();step(1)}else if(ev.key==='0')resetZoom()});
-// Expire the date check even if the page stays open for hours.
-setInterval(()=>{if(state.index&&!freshIndex()){state.index=null;state.indexError='Date check expired; use Reload';buildFrames()}},60000);
+// Refresh without blanking the current maps or silently changing the selected run.
+let backgroundRefreshing=false;
+async function refreshIndex(){
+ if(backgroundRefreshing||e.refresh.disabled)return;
+ backgroundRefreshing=true;
+ try{
+  const response=await fetch('wetterzentrale/availability.json?check='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(15000)});
+  if(!response.ok)throw Error('Index request failed');
+  const next=await response.json();
+  const age=Date.now()-Date.parse(next.checkedAt);
+  if(next.schema!==1||next.ceiling!==240||!next.charts||!Number.isFinite(age)||age < -5*60000||age>MAX_INDEX_AGE)throw Error('Invalid index');
+  if(Date.parse(next.checkedAt)>(Date.parse(state.index?.checkedAt)||0)){
+   state.index=next;state.indexError='';buildFrames();
+  }else if(indexDelayed())status('Update delayed • dated snapshots from '+dateText(state.index.checkedAt),'warn');
+ }catch(error){if(state.index)status('Refresh unavailable • showing dated snapshots from '+dateText(state.index.checkedAt),'warn');}
+ finally{backgroundRefreshing=false;}
+}
+setInterval(refreshIndex,5*60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshIndex()});
 updateModeUI();populateLeadOptions();reload(true);
 })();
 
