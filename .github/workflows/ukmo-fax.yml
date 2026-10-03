@@ -1,4 +1,4 @@
-name: UKMO FAX online archive
+name: Weather charts and UKMO FAX archive
 on:
   schedule:
     # Off-peak hourly check plus a stale-only fallback; GitHub scheduling is best effort.
@@ -9,6 +9,8 @@ on:
     paths:
       - 'ukmo-fax-archive/**'
       - '.github/workflows/ukmo-fax.yml'
+      - 'Wetterzentrale_Model_Viewer.html'
+      - 'wetterzentrale/**'
 permissions:
   contents: write
   pages: write
@@ -19,7 +21,7 @@ concurrency:
 jobs:
   collect-and-publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     environment:
       name: github-pages
     steps:
@@ -40,13 +42,39 @@ jobs:
           console.log(due?'Collection due':'Recent successful collection; fallback skipped');
           NODE
       - uses: actions/setup-node@v4
-        if: steps.due.outputs.run == 'true'
         with:
           node-version: '22'
       - uses: pnpm/action-setup@v4
-        if: steps.due.outputs.run == 'true'
         with:
           version: '11.19.0'
+      - name: Restore verified Wetterzentrale snapshots
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            wetterzentrale/availability.json
+            wetterzentrale/charts
+            wetterzentrale/eng.traineddata
+          key: wz-printed-dates-v1-${{ github.run_id }}
+          restore-keys: wz-printed-dates-v1-
+      - name: Install and test Wetterzentrale date checker
+        working-directory: wetterzentrale
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          node --test test.cjs
+      - name: Read printed model dates and retain verified snapshots
+        id: wetterzentrale
+        continue-on-error: true
+        working-directory: wetterzentrale
+        run: node check-availability.cjs
+      - name: Cache verified Wetterzentrale snapshots
+        if: steps.wetterzentrale.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            wetterzentrale/availability.json
+            wetterzentrale/charts
+            wetterzentrale/eng.traineddata
+          key: wz-printed-dates-v1-${{ github.run_id }}
       - name: Install locked collector dependencies
         if: steps.due.outputs.run == 'true'
         working-directory: ukmo-fax-archive
@@ -79,7 +107,6 @@ jobs:
             git push origin HEAD:main
           fi
       - name: Check existing publishing configuration
-        if: steps.due.outputs.run == 'true'
         id: pages
         env:
           GH_TOKEN: ${{ github.token }}
@@ -87,36 +114,41 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/pages" > "$RUNNER_TEMP/pages.json"
           mode=$(jq -r '.build_type // "legacy"' "$RUNNER_TEMP/pages.json")
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
-          if [ "$mode" = legacy ]; then
-            jq -e '.source.branch == "main" and .source.path == "/"' "$RUNNER_TEMP/pages.json"
+          if [ "$mode" != workflow ]; then
+            echo "Set Settings > Pages > Source to GitHub Actions before publishing verified model snapshots." >&2
+            exit 1
           fi
           echo "url=$(jq -r '.html_url' "$RUNNER_TEMP/pages.json")" >> "$GITHUB_OUTPUT"
-      - name: Request branch-based Pages rebuild explicitly
-        if: steps.due.outputs.run == 'true' && (steps.pages.outputs.mode == 'legacy')
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds"
       - name: Stage all existing viewers for Actions-based Pages
-        if: steps.due.outputs.run == 'true' && (steps.pages.outputs.mode == 'workflow')
+        if: steps.pages.outputs.mode == 'workflow'
         run: |
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const m=JSON.parse(fs.readFileSync('wetterzentrale/availability.json','utf8'));
+          if(m.schema!==1||m.ceiling!==240||!Object.keys(m.charts).length)throw Error('Verified chart snapshot is missing');
+          for(const c of Object.values(m.charts)){
+            if(!/^[a-f0-9]{64}$/.test(c.sha))throw Error('Invalid snapshot filename');
+            const bytes=fs.readFileSync('wetterzentrale/charts/'+c.sha+'.png');
+            if(crypto.createHash('sha256').update(bytes).digest('hex')!==c.sha)throw Error('Snapshot content hash mismatch');
+          }
+          NODE
           mkdir -p _site
           rsync -a --exclude='.git/' --exclude='.github/' --exclude='node_modules/' --exclude='_site/' --exclude='*.traineddata*' ./ _site/
       - uses: actions/upload-pages-artifact@v3
-        if: steps.due.outputs.run == 'true' && (steps.pages.outputs.mode == 'workflow')
+        if: steps.pages.outputs.mode == 'workflow'
         with:
           path: _site
       - uses: actions/deploy-pages@v4
-        if: steps.due.outputs.run == 'true' && (steps.pages.outputs.mode == 'workflow')
+        if: steps.pages.outputs.mode == 'workflow'
         id: deploy
       - name: Verify public manifest catches up
-        if: steps.due.outputs.run == 'true'
         env:
           SITE_URL: ${{ steps.pages.outputs.url }}
         run: |
-          expected=$(node -p "require('./ukmo-fax-archive/archive/manifest.json').updated_at")
+          expected=$(node -p "require('./wetterzentrale/availability.json').checkedAt")
           for attempt in $(seq 1 24); do
-            if curl --fail --silent "${SITE_URL%/}/ukmo-fax-archive/archive/manifest.json?check=$GITHUB_RUN_ID-$attempt" -o "$RUNNER_TEMP/live.json"; then
-              actual=$(jq -r '.updated_at' "$RUNNER_TEMP/live.json")
+            if curl --fail --silent "${SITE_URL%/}/wetterzentrale/availability.json?check=$GITHUB_RUN_ID-$attempt" -o "$RUNNER_TEMP/live.json"; then
+              actual=$(jq -r '.checkedAt' "$RUNNER_TEMP/live.json")
               if [ "$actual" = "$expected" ]; then exit 0; fi
             fi
             sleep 15
@@ -144,3 +176,8 @@ jobs:
 
 
 
+      - name: Surface a failed model-date check
+        if: steps.wetterzentrale.outcome == 'failure'
+        run: |
+          echo 'The model-date check failed. Any previous snapshot was retained; the viewer withholds stale date checks.' >&2
+          exit 1

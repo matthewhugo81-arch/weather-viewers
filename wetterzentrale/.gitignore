@@ -1,0 +1,5 @@
+node_modules/
+*.traineddata*
+availability.json.tmp
+availability.json
+charts/
