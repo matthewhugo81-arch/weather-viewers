@@ -32,7 +32,7 @@ function viewer(imageFactory){
  Object.defineProperty(get('lead'),'innerHTML',{set(html){this.options=[...html.matchAll(/value="(\d+)"/g)].map(m=>({value:m[1],disabled:false}));this.value=this.options[0]?.value||'';}});
  const context={window:{WZModels:r,addEventListener(){}},document:{getElementById:get,addEventListener(){}},Date,Image:imageFactory||function(){},setInterval(){},setTimeout,clearTimeout,AbortSignal};
  const html=fs.readFileSync(path.join(__dirname,'../Wetterzentrale_Model_Viewer.html'),'utf8');
- const code=html.match(/<script>\s*([^]*?)<\/script>/)[1].replace('updateModeUI();populateLeadOptions();reload(true);','renderRunBar=()=>{};updatePanelDisplay=()=>{};globalThis.subject={candidate,populateLeadOptions,state,e,freshIndex,buildFrames,loadImage};');
+ const code=html.match(/<script>\s*([^]*?)<\/script>/)[1].replace('updateModeUI();populateLeadOptions();reload(true);','renderRunBar=()=>{};updatePanelDisplay=()=>{};globalThis.subject={candidate,populateLeadOptions,state,e,freshIndex,buildFrames,loadImage,cancelImageLoads};');
  vm.runInNewContext(code,context);return context.subject;
 }
 test('A decoded chart from the wrong day cannot enter an exact-time comparison',()=>{
@@ -70,9 +70,9 @@ test('All-model single view displays the first model even when it finishes first
  s.e.compareMode.value='allmodels';s.e.refRun.value='0';s.e.lead.value='120';s.state.referenceInit=init;
  const charts={};for(const [i,key] of r.order.entries())charts[r.filename(key,0,120,1)]={init:new Date(init).toISOString(),valid:new Date(init+120*3600000).toISOString(),sha:String(i+1).repeat(64)};
  s.state.index={schema:1,checkedAt:new Date().toISOString(),charts};s.buildFrames();
- assert.equal(images.length,8);images[0].onload();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(images.length,4);images[0].onload();await new Promise(resolve=>setImmediate(resolve));
  assert.match(s.e.singleImg.src,/1{64}\.png$/);assert.equal(s.e.empty.style.display,'none');
- for(const im of images.slice(1))im.onload();await new Promise(resolve=>setImmediate(resolve));
+ for(let i=1;i<images.length;i++)images[i].onload();await new Promise(resolve=>setImmediate(resolve));
  s.buildFrames();await new Promise(resolve=>setImmediate(resolve));assert.equal(images.length,8);assert(s.e.singleImg.src);
 });
 test('A selected run cannot retain a reference date from a different cycle',async()=>{
@@ -85,4 +85,21 @@ test('Selection changes during initial index loading do not report missing maps'
  const s=viewer();s.e.refresh.disabled=true;s.e.refRun.value='0';s.e.lead.value='120';s.buildFrames();
  assert.equal(s.state.userSelected,true);assert.equal(s.state.frames.length,0);
  assert.equal(s.e.statusText.textContent,'Checking model dates…');assert.equal(s.e.empty.style.display,'flex');
+});
+
+test('Rapid forecast navigation cancels obsolete requests and bounds browser concurrency',async()=>{
+ const images=[];function MockImage(){images.push(this);this.naturalWidth=959;this.naturalHeight=741;}
+ const s=viewer(MockImage),pending=[];
+ for(let i=0;i<40;i++)pending.push(s.loadImage('old-'+i));assert.equal(images.length,4);
+ s.cancelImageLoads();assert((await Promise.all(pending)).every(ok=>ok===false));
+ assert(images.every(im=>im.src===''));assert(images.every(im=>im.onload===null));
+ const next=s.loadImage('current-168');assert.equal(images.length,5);images.at(-1).onload();assert.equal(await next,true);
+ assert.equal(await s.loadImage('current-168'),true);assert.equal(images.length,5);
+});
+
+test('A failed image retries with a fresh URL rather than a cached failure',async()=>{
+ const images=[];function MockImage(){images.push(this);this.naturalWidth=959;this.naturalHeight=741;}
+ const s=viewer(MockImage),result=s.loadImage('chart.png');images[0].onerror();
+ assert.equal(images.length,2);assert.match(images[1].src,/chart\.png\?retry=/);
+ images[1].onload();assert.equal(await result,true);
 });
