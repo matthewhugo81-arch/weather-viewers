@@ -1,8 +1,8 @@
 name: Weather charts and UKMO FAX archive
 on:
   schedule:
-    # Off-peak hourly check plus a stale-only fallback; GitHub scheduling is best effort.
-    - cron: '17,47 * * * *'
+    # Check staggered chart arrivals; GitHub scheduling remains best effort.
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
   push:
     branches: [main]
@@ -28,25 +28,39 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Decide whether collection is due
-        id: due
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          node - <<'NODE'
-          const fs=require('fs');
-          const m=JSON.parse(fs.readFileSync('ukmo-fax-archive/archive/manifest.json','utf8'));
-          const age=Date.now()-Date.parse(m.last_successful_collection||'');
-          const due=process.env.EVENT_NAME!=='schedule'||!Number.isFinite(age)||age>=50*60000;
-          fs.appendFileSync(process.env.GITHUB_OUTPUT,'run='+due+'\n');
-          console.log(due?'Collection due':'Recent successful collection; fallback skipped');
-          NODE
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - uses: pnpm/action-setup@v4
         with:
           version: '11.19.0'
+      - name: Install locked collector dependencies
+        working-directory: ukmo-fax-archive
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Collect originals and read printed dates
+        id: collect
+        continue-on-error: true
+        working-directory: ukmo-fax-archive
+        run: node scripts/collect-online.cjs
+      - name: Retain four runs per valid time and seven days of past charts
+        working-directory: ukmo-fax-archive
+        run: node scripts/retain-archive.cjs
+      - name: Validate saved archive
+        working-directory: ukmo-fax-archive
+        run: |
+          node scripts/validate.cjs
+          node scripts/test-loading.cjs
+          node scripts/test-refresh.cjs
+      - name: Save images and manifest in repository history
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ukmo-fax-archive/archive
+          if ! git diff --cached --quiet; then
+            git commit -m 'Archive UKMO FAX charts'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
       - name: Restore verified Wetterzentrale snapshots
         uses: actions/cache/restore@v4
         with:
@@ -75,37 +89,6 @@ jobs:
             wetterzentrale/charts
             wetterzentrale/eng.traineddata
           key: wz-printed-dates-v1-${{ github.run_id }}
-      - name: Install locked collector dependencies
-        if: steps.due.outputs.run == 'true'
-        working-directory: ukmo-fax-archive
-        run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Collect originals and read printed dates
-        if: steps.due.outputs.run == 'true'
-        id: collect
-        continue-on-error: true
-        working-directory: ukmo-fax-archive
-        run: node scripts/collect-online.cjs
-      - name: Retain four runs per valid time and seven days of past charts
-        if: steps.due.outputs.run == 'true'
-        working-directory: ukmo-fax-archive
-        run: node scripts/retain-archive.cjs
-      - name: Validate saved archive
-        if: steps.due.outputs.run == 'true'
-        working-directory: ukmo-fax-archive
-        run: |
-          node scripts/validate.cjs
-          node scripts/test-loading.cjs
-      - name: Save images and manifest in repository history
-        if: steps.due.outputs.run == 'true'
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add ukmo-fax-archive/archive
-          if ! git diff --cached --quiet; then
-            git commit -m 'Archive UKMO FAX charts'
-            git pull --rebase origin main
-            git push origin HEAD:main
-          fi
       - name: Check existing publishing configuration
         id: pages
         env:
@@ -157,19 +140,19 @@ jobs:
           exit 1
       - name: Choose weekly backup
         id: backup
-        if: steps.due.outputs.run == 'true' && (always())
+        if: (always())
         run: |
           if [ "$(date -u +%u-%H)" = '7-03' ] || [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             echo 'save=true' >> "$GITHUB_OUTPUT"
           fi
       - uses: actions/upload-artifact@v4
-        if: steps.due.outputs.run == 'true' && (always() && steps.backup.outputs.save == 'true')
+        if: (always() && steps.backup.outputs.save == 'true')
         with:
           name: ukmo-fax-backup-${{ github.run_id }}
           path: ukmo-fax-archive/archive/
           retention-days: 90
       - name: Surface incomplete collection
-        if: steps.due.outputs.run == 'true' && (steps.collect.outcome == 'failure')
+        if: (steps.collect.outcome == 'failure')
         run: |
           echo 'Some downloads or date readings need attention; successful captures were saved and published.' >&2
           exit 1

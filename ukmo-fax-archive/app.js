@@ -136,7 +136,21 @@
  if(archive.pending?.length){$('pending').hidden=false;$('pending').textContent=archive.pending.length+' chart(s) await date review. See the setup guide.';}
  if(archive.collection_status?.download_failures){$('pending').hidden=false;$('pending').textContent+=' Some chart sources could not be downloaded at the last check; previously saved charts remain available.';}
  rebuild();
- if(location.protocol==='https:'||location.protocol==='http:')setInterval(async()=>{try{const r=await fetch('archive/manifest.json?refresh='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(10000)});if(r.ok&&(await r.json()).updated_at!==archive.updated_at&&!window.FaxPen?.busy)location.reload();}catch{}},300000);
+ function updateFreshness(){
+  const stamp=archive.collection_status?.checked_at||archive.updated_at;
+  const age=Date.now()-Date.parse(stamp||'');
+  $('updated').textContent=archive.updated_at?'Snapshot '+fmt(archive.updated_at)+(age>30*60000?' · collection overdue':''):'Archive unavailable';
+  $('updated').title=age>30*60000?'No source check in the last 30 minutes. Saved charts may lag newly published charts.':'Last source check: '+(stamp||'unknown');
+ }
+ updateFreshness();setInterval(updateFreshness,60000);
+ if(location.protocol==='https:'||location.protocol==='http:'){
+  let refreshing=false;
+  async function refreshArchive(){
+   updateFreshness();if(refreshing||document.hidden)return;refreshing=true;
+   try{const r=await fetch('archive/manifest.json?refresh='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(10000)});if(r.ok&&(await r.json()).updated_at!==archive.updated_at&&!window.FaxPen?.busy)location.reload();}catch{}finally{refreshing=false;}
+  }
+  setInterval(refreshArchive,60000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshArchive();});
+  window.addEventListener('focus',refreshArchive);
+ }
 })();
-
-

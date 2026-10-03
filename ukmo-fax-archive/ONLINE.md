@@ -2,7 +2,7 @@
 
 This project is hosted in `matthewhugo81-arch/weather-viewers`, under `ukmo-fax-archive/`.
 
-The repository-level `.github/workflows/ukmo-fax.yml` targets hourly collection at :17 UTC, with an additional :47 fallback. Scheduled runs skip collection when the most recent successful check is less than 50 minutes old; push and manual runs always collect. This avoids the busy top-of-hour slot and gives a missed main check another opportunity. GitHub can still delay or drop triggers; this is mitigation, not an exact hourly guarantee. The task uses a cross-platform Node.js collector with Tesseract OCR, rather than the Windows-only local script. Your computer does not need to be running.
+The repository-level `.github/workflows/ukmo-fax.yml` schedules collection every 15 minutes at :07, :22, :37 and :52 UTC. Every triggered run checks all FAX products independently, before the model scan. GitHub can still delay or drop scheduled triggers; this is not an exact timing guarantee. The task uses a cross-platform Node.js collector with Tesseract OCR, rather than the Windows-only local script. Your computer does not need to be running.
 
 ## What is saved
 
@@ -20,9 +20,9 @@ Existing branch-based publishing must use `main` and `/ (root)`. The job checks 
 
 ## Checking operation
 
-Open the repository's **Actions → UKMO FAX online archive**. A green collecting run means collection, validation, archive commit and public-manifest verification succeeded. A recent-check fallback can also finish green with the collection steps skipped; inspect the Decide whether collection is due step. **Run workflow** performs an immediate collection and also saves an additional backup snapshot. If collection partially fails, successfully downloaded images are still committed and published, then the workflow is marked failed for attention. Unreadable headers stay saved in the review queue.
+Open the repository's **Actions → UKMO FAX online archive**. A green collecting run means collection, validation, archive commit and public-manifest verification succeeded. Every triggered run now collects; the previous 50-minute skip rule has been removed. **Run workflow** performs an immediate collection and also saves an additional backup snapshot. If collection partially fails, successfully downloaded images are still committed and published, then the workflow is marked failed for attention. Unreadable headers stay saved in the review queue.
 
-The viewer loads the current JSON snapshot on each hosted page load and shows the snapshot timestamp. No age-based source-check banner is displayed. Refreshing the website retrieves the published archive; it does not itself run collection.
+The viewer loads the current JSON snapshot on each hosted page load and shows the snapshot timestamp. The snapshot shows collection overdue after 30 minutes without a source check. The browser checks every minute and on return to the tab, deferring reload while drawings are unsaved. Refreshing the website retrieves the published archive; it does not itself run collection.
 
 GitHub may delay scheduled runs. Public-repository schedules can be disabled after 60 days without repository activity; check the Actions page if updates stop. The collector's regular archive commits normally provide ongoing activity, but this is not a service-level guarantee. Monitor archive size against GitHub's repository and Pages limits as history grows.
 
@@ -30,7 +30,7 @@ GitHub may delay scheduled runs. Public-repository schedules can be disabled aft
 
 The Node dependencies are pinned in package.json and pnpm-lock.yaml. Run `pnpm install --frozen-lockfile --ignore-scripts`, then `node scripts/test-online.cjs` to test OCR against saved charts. The test never changes chart originals. `node scripts/collect-online.cjs` polls sources. The original archive.bat remains available for optional local collection, but does not upload local changes.
 
-The hourly workflow, rather than Windows Task Scheduler, is the normal online collection mechanism. Keep the whole `archive` directory and manifest when moving or restoring this site.
+The scheduled workflow, rather than Windows Task Scheduler, is the normal online collection mechanism. Keep the whole `archive` directory and manifest when moving or restoring this site.
 
 References: [GitHub schedules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule), [Pages build API](https://docs.github.com/en/rest/pages/pages#request-a-github-pages-build).
 
