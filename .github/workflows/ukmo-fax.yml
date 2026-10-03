@@ -1,8 +1,9 @@
 name: Weather charts and UKMO FAX archive
 on:
   schedule:
-    # Off-peak hourly check plus a stale-only fallback; GitHub scheduling is best effort.
-    - cron: '17,47 * * * *'
+    # Frequent model publication; the due check below keeps FAX collection hourly.
+    # GitHub scheduling is best effort, so this is a target, not a freshness guarantee.
+    - cron: '7,17,27,37,47,57 * * * *'
   workflow_dispatch:
   push:
     branches: [main]

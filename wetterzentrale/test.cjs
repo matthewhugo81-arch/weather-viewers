@@ -138,3 +138,31 @@ test('Session-keyed image retries preserve the query and cached success is reuse
  assert.match(images[1].src,/\?session=sample&retry=/);images[1].onload();assert.equal(await p,true);
  assert.equal(await s.loadImage('chart.png?session=sample'),true);assert.equal(images.length,2);
 });
+
+test('ICON 12Z T+114 waits for publication then becomes usable without changing the selection',async()=>{
+ const images=[];function MockImage(){images.push(this);this.naturalWidth=959;this.naturalHeight=741;}
+ let response;const s=viewer(MockImage,async()=>({ok:true,json:async()=>response}));
+ const init=Date.parse('2026-10-03T12:00:00Z'),name=r.filename('icon',12,114,1);
+ s.e.model.value='icon';s.e.refRun.value='12';s.e.lead.value='114';s.state.referenceInit=init;
+ s.state.index={schema:1,ceiling:240,checkedAt:new Date(Date.now()-60000).toISOString(),charts:{
+  [name]:{init:'2026-10-02T12:00:00.000Z',valid:'2026-10-07T06:00:00.000Z',sha:'a'.repeat(64)}
+ }};
+ const old=s.candidate('icon',12,114,init);assert.equal(old.awaitingVerification,true);assert.equal(old.url,'');
+ assert.equal(s.candidate('icon',18,132,init).awaitingVerification,false);
+ response={...s.state.index,checkedAt:new Date().toISOString(),charts:{
+  [name]:{init:'2026-10-03T12:00:00.000Z',valid:'2026-10-08T06:00:00.000Z',sha:'b'.repeat(64)}
+ }};
+ await s.refreshIndex();assert.equal(images.length,1);images[0].onload();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(s.e.refRun.value,'12');assert.equal(s.e.lead.value,'114');assert.equal(s.state.referenceInit,init);
+ assert.equal(s.state.frames.at(-1).ok,true);assert.equal(s.state.frames.at(-1).awaitingVerification,false);
+ assert.match(s.e.singleImg.src,/b{64}\.png/);
+});
+
+test('Missing indexed charts are awaiting verification, while bad references remain errors',()=>{
+ const s=viewer(),init=Date.parse('2026-10-03T12:00:00Z'),name=r.filename('icon',12,114,1);
+ s.state.index={schema:1,checkedAt:new Date().toISOString(),charts:{}};
+ assert.equal(s.candidate('icon',12,114,init).awaitingVerification,true);
+ s.state.index.charts[name]={init:new Date(init).toISOString(),valid:new Date(init+114*3600000).toISOString(),sha:'invalid'};
+ const invalid=s.candidate('icon',12,114,init);assert.equal(invalid.awaitingVerification,false);assert.equal(invalid.url,'');
+ assert.match(invalid.reason,/Invalid verified/);
+});
