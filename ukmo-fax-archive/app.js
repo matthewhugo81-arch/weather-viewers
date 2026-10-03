@@ -27,23 +27,23 @@
  const imageURLs=new Map(charts.map(c=>[c.filename,location.protocol==='file:'?c.filename:(c.image_url||c.filename)]));
  let mode='2',chosenB='',groups=new Map(),entries=[],latest=new Map();
  function rebuild(){
-  const old=$('valid').value,browse=$('browseMode').value;
-  ({entries,groups,latest}=window.FaxModel.build(charts,$('source').value,browse));
+  const old=$('valid').value;
+  ({entries,groups,latest}=window.FaxModel.build(charts,$('source').value));
   $('valid').replaceChildren();
   for(const e of entries){
-   const c=e.a,label=browse==='latest'?(c.lead_hours===0?'Analysis':'T+'+c.lead_hours)+' · valid '+short(c.valid_time)+' · run '+short(c.issue_time):short(c.valid_time)+' · newest run '+short(c.issue_time)+' · T+'+c.lead_hours;
+   const c=e.a,label=e.label+' · valid '+short(c.valid_time)+' · run '+short(c.issue_time);
    $('valid').add(new Option(label,e.key));
   }
   if(entries.some(e=>e.key===old))$('valid').value=old;
   else if(entries.length)$('valid').value=entries[0].key;
-  $('selectionLabel').textContent=browse==='latest'?'CHART A — LATEST AVAILABLE BY LEAD':'CHART A — ARCHIVED VALID TIME';
-  $('leadShelf').hidden=browse!=='latest';$('leadShelf').replaceChildren();
-  for(const lead of window.FaxModel.leads){
-   const c=latest.get(lead),button=document.createElement('button');button.type='button';button.dataset.lead=lead;button.disabled=!c;
-   button.textContent=lead===0?'Analysis':'T+'+lead;
-   button.title=c?'Latest available: run '+short(c.issue_time)+' · valid '+short(c.valid_time):'No chart captured for this lead';
-   button.setAttribute('aria-pressed',String($('valid').value==='lead:'+lead));
-   button.onclick=()=>{if(!c)return;$('valid').value='lead:'+lead;chosenB='';render();};$('leadShelf').append(button);
+  $('selectionLabel').textContent='CHART A — LATEST AVAILABLE CHART';
+  $('leadShelf').replaceChildren();
+  for(const slot of window.FaxModel.slots.filter(s=>!$('source').value||s.source===$('source').value)){
+   const c=latest.get(slot.key),button=document.createElement('button');button.type='button';button.dataset.key=slot.key;button.disabled=!c;
+   button.textContent=slot.label;
+   button.title=c?slot.label+' · run '+short(c.issue_time)+' · valid '+short(c.valid_time)+' · T+'+c.lead_hours:'No chart captured for '+slot.label;
+   button.setAttribute('aria-pressed',String($('valid').value===slot.key));
+   button.onclick=()=>{if(!c)return;$('valid').value=slot.key;chosenB='';render();};$('leadShelf').append(button);
   }
   render();
  }
@@ -87,7 +87,7 @@
  function description(c){const cycle=c.issue_time.slice(11,13)+"Z";const date=new Date(c.issue_time).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});return `${cycle} ${c.lead_hours===0?"analysis":"run"} · ${date} · T+${c.lead_hours}`;}
  function panel(c,index,older){
   const p=document.createElement('article');p.className='panel';const h=document.createElement('div');h.className='panel-head';
-  const l=document.createElement('div');l.className='panel-label';l.textContent=index===0?($('browseMode').value==='latest'?'CHART A · LATEST AVAILABLE T+'+(c?.lead_hours??''):'CHART A · ARCHIVE'):index===1?'CHART B · PREVIOUS RUN':`CHART ${String.fromCharCode(65+index)} · OLDER RUN`;h.append(l);
+  const l=document.createElement('div');l.className='panel-label';l.textContent=index===0?('CHART A · '+(entries.find(e=>e.key===$('valid').value)?.label||'LATEST AVAILABLE')):index===1?'CHART B · PREVIOUS RUN':`CHART ${String.fromCharCode(65+index)} · OLDER RUN`;h.append(l);
   if(index===1){const s=document.createElement('select');s.setAttribute('aria-label','Chart B previous run');
    if(!older.length){s.add(new Option('No previous run saved yet',''));s.disabled=true;}
    older.forEach((x,i)=>s.add(new Option(`${i===0?'Previous run':`${i+1} runs back`} · ${description(x)}`,x.id)));
@@ -125,9 +125,8 @@
   $('previousPeriod').disabled=position<=0;
   $('nextPeriod').disabled=position<0||position>=timeline.length-1;
   $('count').textContent=`${older.length} previous run${older.length===1?'':'s'} saved`;
-  const current=$('browseMode').value==='latest';
-  $('availability').textContent=!a?'No charts are available for this source.':(current?(a.lead_hours===0?'Latest available analysis':'Latest available T+'+a.lead_hours)+' · run '+short(a.issue_time)+'. This lead stays in Chart A until a newer chart for the same lead arrives. ':'Archived chart · run '+short(a.issue_time)+'. ')+(b?'B: earlier run '+short(b.issue_time)+' (T+'+b.lead_hours+'). Both valid '+short(a.valid_time)+'.':'No earlier forecast is saved for this exact valid time.');
-  document.querySelectorAll('#leadShelf button').forEach(button=>button.setAttribute('aria-pressed',String(period.value==='lead:'+button.dataset.lead)));
+  $('availability').textContent=!a?'No charts are available for this source.':('Latest available '+entry.label+' · run '+short(a.issue_time)+'. This chart stays in Chart A until its replacement arrives. ')+(b?'B: earlier run '+short(b.issue_time)+' (T+'+b.lead_hours+'). Both valid '+short(a.valid_time)+'.':'No earlier forecast is saved for this exact valid time.');
+  document.querySelectorAll('#leadShelf button').forEach(button=>button.setAttribute('aria-pressed',String(period.value===button.dataset.key)));
   $('wipeArea').hidden=mode!=='wipe';wipe(a,b);window.FaxPen?.sync(mode);preloadNearby();
   $('rows').replaceChildren();g.forEach(c=>{const tr=document.createElement('tr');[fmt(c.valid_time),fmt(c.issue_time),'T+'+c.lead_hours,names[c.source]||c.source,fmt(c.download_time)].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.append(td);});const td=document.createElement('td');td.append(original(c));tr.append(td);$('rows').append(tr);});
   const best=entries.find(e=>e.older.length);$('example').disabled=!best;$('exampleInfo').textContent=best?' '+short(best.a.valid_time):' No period has previous runs yet.';
@@ -135,7 +134,7 @@
  $('source').add(new Option('Combined · latest available products',''));
  [...new Set(charts.map(c=>c.source))].sort().forEach(s=>$('source').add(new Option(names[s]||s,s)));
  $('source').value='';
- $('browseMode').onchange=()=>{chosenB='';rebuild();};$('source').onchange=()=>{chosenB='';rebuild();};$('valid').onchange=()=>{chosenB='';render();};
+ $('source').onchange=()=>{chosenB='';rebuild();};$('valid').onchange=()=>{chosenB='';render();};
  function stepPeriod(delta){
   const period=$('valid'),timeline=entries.map(e=>e.key),next=timeline.indexOf(period.value)+delta;
   if(next<0||next>=period.options.length)return;

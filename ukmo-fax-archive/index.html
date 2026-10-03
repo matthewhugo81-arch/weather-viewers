@@ -63,9 +63,11 @@ body.single-view .toolbar{position:sticky;top:0;z-index:10;background:var(--back
 body.single-view .chart-controls{position:sticky;top:0;z-index:10;background:var(--back);padding-block:6px;border-bottom:1px solid var(--line)}
 body.single-view .chart-controls .toolbar{position:static;padding-block:0;border-bottom:0}
 @media(max-width:850px){.chart-controls .lead-shelf{flex-basis:100%}.chart-controls .toolbar{flex-basis:100%}}
+.chart-controls .lead-shelf{gap:4px}.chart-controls .lead-shelf button{min-width:48px;padding:7px 8px}
+.chart-controls .toolbar{flex-basis:900px;min-width:0}.chart-controls .toolbar #penHint{max-width:150px}
 </style><script defer src="archive/manifest.js"></script><script defer src="pen.js?v=automatic-1"></script></head><body>
 <header><div><p class="eyebrow">NORTH ATLANTIC &amp; EUROPE · ALL TIMES UTC</p><h1>UKMO FAX <span>Run Archive &amp; Comparison</span></h1></div><div class="utc" id="updated"></div></header>
-<main><section class="controls"><label class="browse-label">Browse<select id="browseMode" aria-label="Browse charts"><option value="latest">Latest charts by lead</option><option value="archive">Archive by valid time</option></select></label><label class="valid-label"><span id="selectionLabel">CHART A — LATEST AVAILABLE BY LEAD</span><select id="valid" aria-label="Chart A chart"></select></label><p class="simple-rule"><strong>A = latest available for your selected lead</strong><br>B = an earlier forecast for A’s exact valid time</p><details class="source-settings"><summary>Source</summary><label>Chart source<select id="source"></select></label></details></section><div class="chart-controls"><nav id="leadShelf" class="lead-shelf" aria-label="Latest available chart leads"></nav>
+<main><section class="controls"><label class="valid-label"><span id="selectionLabel">CHART A — LATEST AVAILABLE CHART</span><select id="valid" aria-label="Chart A chart"></select></label><p class="simple-rule"><strong>A = latest available for your selected chart</strong><br>B = an earlier forecast for A’s exact valid time</p><details class="source-settings"><summary>Source</summary><label>Chart source<select id="source"></select></label></details></section><div class="chart-controls"><nav id="leadShelf" class="lead-shelf" aria-label="Latest available chart leads"></nav>
 <section class="toolbar"><div class="modes" role="group" aria-label="Comparison mode"><button data-mode="2" aria-pressed="true">2-up</button><button data-mode="wipe" aria-pressed="false">Wipe / slider</button><button data-mode="1" aria-pressed="false">Single</button><button data-mode="4" aria-pressed="false">4-up</button><span class="period-navigation" role="group" aria-label="Forecast period navigation"><button id="previousPeriod" aria-label="Previous forecast period" title="Previous forecast period">← Previous</button><button id="nextPeriod" aria-label="Next forecast period" title="Next forecast period">Next →</button></span></div><span id="count"></span></section></div>
 <details class="thickness-guide" id="thicknessGuide"><summary>Thickness &amp; 850 hPa temperature guide</summary><div class="help-body">
 <p>A quick UK air-mass guide for the dashed <strong>1000–500 hPa thickness</strong> contours. Colours match the drawing pens; 1 dam = 10 metres.</p>
@@ -83,9 +85,9 @@ body.single-view .chart-controls .toolbar{position:static;padding-block:0;border
 <div class="context"><strong id="validTitle"></strong><span>Newest on the left · earlier forecasts on the right</span></div><p id="availability" class="availability" role="status"></p>
 <section id="panels" class="panels" aria-label="Chart comparison"></section>
 <section id="wipeArea" hidden><div class="wipe-controls"><label for="slider">Reveal previous forecast <output id="percent">50%</output></label><input id="slider" type="range" min="0" max="100" value="50"><p>0% = latest (A) · 100% = previous (B)</p></div><p id="wipeWarning" role="status"></p><div id="wipeCanvas" class="wipe-canvas"></div></section>
-<details class="help"><summary>How to use this page</summary><div class="help-body"><p><strong>Latest charts by lead</strong> is the normal view. Choose Analysis or T+24, T+36, T+48, T+60, T+72, T+84, T+96 or T+120. Chart A keeps the latest available chart for that lead until its replacement arrives. Different leads can show different run dates while a new run is arriving.</p><p><strong>Previous / Next</strong> moves through this latest chart shelf in lead order. Old dates are available only when you explicitly choose <strong>Archive by valid time</strong>.</p><p><strong>Chart B</strong> and the extra panels compare earlier issue times for Chart A’s exact valid time. They never replace your selected lead in Chart A. Run and valid dates are shown on every chart.</p><p>Each source is checked independently every five minutes. The page checks for updates every minute and on return, keeping the selected lead. Drawings save automatically for everyone. Use Pen, Undo and Clear mine as before. Wipe is available for matching image layouts.</p><button id="example">Show a chart with earlier forecasts</button><span id="exampleInfo"></span></div></details>
+<details class="help"><summary>How to use this page</summary><div class="help-body"><p>Choose one of the four Icelandic forecasts (00Z, 06Z, 12Z or 18Z), then T+24 through T+120. Each Icelandic button keeps the latest PPVE89 chart for that cycle; these are T+24 forecasts with their printed run and valid dates shown. Each chart remains until its own replacement arrives.</p><p><strong>Previous / Next</strong> follows the buttons from Iceland 00Z through T+120.</p><p><strong>Chart B</strong> and the extra panels compare earlier issue times for Chart A’s exact valid time. They never replace your selected lead in Chart A. Run and valid dates are shown on every chart.</p><p>Each source is checked independently every five minutes. The page checks for updates every minute and on return, keeping the selected chart. Drawings save automatically for everyone. Use Pen, Undo and Clear mine as before. Wipe is available for matching image layouts.</p><button id="example">Show a chart with earlier forecasts</button><span id="exampleInfo"></span></div></details>
 <details class="inventory"><summary>Archive details <span id="inventoryCount"></span></summary><div class="table-scroll"><table><thead><tr><th>Valid UTC</th><th>Run UTC</th><th>Lead</th><th>Source</th><th>Downloaded UTC</th><th>Image</th></tr></thead><tbody id="rows"></tbody></table></div></details><p id="pending" class="notice" hidden></p>
-<footer><p>Original charts: Met Office · © Crown Copyright. Stored unchanged. Run time = valid time minus lead.</p><p><a href="https://www.metbrief.com/EGRRb.html#00">Metbrief</a><a href="https://brunnur.vedur.is/flugkort/">Icelandic Met Office</a><a href="README.md">Setup guide</a></p></footer></main><script src="viewer-model.js"></script><script>document.addEventListener("DOMContentLoaded",()=>{
+<footer><p>Original charts: Met Office · © Crown Copyright. Stored unchanged. Run time = valid time minus lead.</p><p><a href="https://www.metbrief.com/EGRRb.html#00">Metbrief</a><a href="https://brunnur.vedur.is/flugkort/">Icelandic Met Office</a><a href="README.md">Setup guide</a></p></footer></main><script src="viewer-model.js?v=iceland-cycles-1"></script><script>document.addEventListener("DOMContentLoaded",()=>{
 'use strict';
 (async () => {
  const $=id=>document.getElementById(id);
@@ -115,23 +117,23 @@ body.single-view .chart-controls .toolbar{position:static;padding-block:0;border
  const imageURLs=new Map(charts.map(c=>[c.filename,location.protocol==='file:'?c.filename:(c.image_url||c.filename)]));
  let mode='2',chosenB='',groups=new Map(),entries=[],latest=new Map();
  function rebuild(){
-  const old=$('valid').value,browse=$('browseMode').value;
-  ({entries,groups,latest}=window.FaxModel.build(charts,$('source').value,browse));
+  const old=$('valid').value;
+  ({entries,groups,latest}=window.FaxModel.build(charts,$('source').value));
   $('valid').replaceChildren();
   for(const e of entries){
-   const c=e.a,label=browse==='latest'?(c.lead_hours===0?'Analysis':'T+'+c.lead_hours)+' · valid '+short(c.valid_time)+' · run '+short(c.issue_time):short(c.valid_time)+' · newest run '+short(c.issue_time)+' · T+'+c.lead_hours;
+   const c=e.a,label=e.label+' · valid '+short(c.valid_time)+' · run '+short(c.issue_time);
    $('valid').add(new Option(label,e.key));
   }
   if(entries.some(e=>e.key===old))$('valid').value=old;
   else if(entries.length)$('valid').value=entries[0].key;
-  $('selectionLabel').textContent=browse==='latest'?'CHART A — LATEST AVAILABLE BY LEAD':'CHART A — ARCHIVED VALID TIME';
-  $('leadShelf').hidden=browse!=='latest';$('leadShelf').replaceChildren();
-  for(const lead of window.FaxModel.leads){
-   const c=latest.get(lead),button=document.createElement('button');button.type='button';button.dataset.lead=lead;button.disabled=!c;
-   button.textContent=lead===0?'Analysis':'T+'+lead;
-   button.title=c?'Latest available: run '+short(c.issue_time)+' · valid '+short(c.valid_time):'No chart captured for this lead';
-   button.setAttribute('aria-pressed',String($('valid').value==='lead:'+lead));
-   button.onclick=()=>{if(!c)return;$('valid').value='lead:'+lead;chosenB='';render();};$('leadShelf').append(button);
+  $('selectionLabel').textContent='CHART A — LATEST AVAILABLE CHART';
+  $('leadShelf').replaceChildren();
+  for(const slot of window.FaxModel.slots.filter(s=>!$('source').value||s.source===$('source').value)){
+   const c=latest.get(slot.key),button=document.createElement('button');button.type='button';button.dataset.key=slot.key;button.disabled=!c;
+   button.textContent=slot.label;
+   button.title=c?slot.label+' · run '+short(c.issue_time)+' · valid '+short(c.valid_time)+' · T+'+c.lead_hours:'No chart captured for '+slot.label;
+   button.setAttribute('aria-pressed',String($('valid').value===slot.key));
+   button.onclick=()=>{if(!c)return;$('valid').value=slot.key;chosenB='';render();};$('leadShelf').append(button);
   }
   render();
  }
@@ -175,7 +177,7 @@ body.single-view .chart-controls .toolbar{position:static;padding-block:0;border
  function description(c){const cycle=c.issue_time.slice(11,13)+"Z";const date=new Date(c.issue_time).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});return `${cycle} ${c.lead_hours===0?"analysis":"run"} · ${date} · T+${c.lead_hours}`;}
  function panel(c,index,older){
   const p=document.createElement('article');p.className='panel';const h=document.createElement('div');h.className='panel-head';
-  const l=document.createElement('div');l.className='panel-label';l.textContent=index===0?($('browseMode').value==='latest'?'CHART A · LATEST AVAILABLE T+'+(c?.lead_hours??''):'CHART A · ARCHIVE'):index===1?'CHART B · PREVIOUS RUN':`CHART ${String.fromCharCode(65+index)} · OLDER RUN`;h.append(l);
+  const l=document.createElement('div');l.className='panel-label';l.textContent=index===0?('CHART A · '+(entries.find(e=>e.key===$('valid').value)?.label||'LATEST AVAILABLE')):index===1?'CHART B · PREVIOUS RUN':`CHART ${String.fromCharCode(65+index)} · OLDER RUN`;h.append(l);
   if(index===1){const s=document.createElement('select');s.setAttribute('aria-label','Chart B previous run');
    if(!older.length){s.add(new Option('No previous run saved yet',''));s.disabled=true;}
    older.forEach((x,i)=>s.add(new Option(`${i===0?'Previous run':`${i+1} runs back`} · ${description(x)}`,x.id)));
@@ -213,9 +215,8 @@ body.single-view .chart-controls .toolbar{position:static;padding-block:0;border
   $('previousPeriod').disabled=position<=0;
   $('nextPeriod').disabled=position<0||position>=timeline.length-1;
   $('count').textContent=`${older.length} previous run${older.length===1?'':'s'} saved`;
-  const current=$('browseMode').value==='latest';
-  $('availability').textContent=!a?'No charts are available for this source.':(current?(a.lead_hours===0?'Latest available analysis':'Latest available T+'+a.lead_hours)+' · run '+short(a.issue_time)+'. This lead stays in Chart A until a newer chart for the same lead arrives. ':'Archived chart · run '+short(a.issue_time)+'. ')+(b?'B: earlier run '+short(b.issue_time)+' (T+'+b.lead_hours+'). Both valid '+short(a.valid_time)+'.':'No earlier forecast is saved for this exact valid time.');
-  document.querySelectorAll('#leadShelf button').forEach(button=>button.setAttribute('aria-pressed',String(period.value==='lead:'+button.dataset.lead)));
+  $('availability').textContent=!a?'No charts are available for this source.':('Latest available '+entry.label+' · run '+short(a.issue_time)+'. This chart stays in Chart A until its replacement arrives. ')+(b?'B: earlier run '+short(b.issue_time)+' (T+'+b.lead_hours+'). Both valid '+short(a.valid_time)+'.':'No earlier forecast is saved for this exact valid time.');
+  document.querySelectorAll('#leadShelf button').forEach(button=>button.setAttribute('aria-pressed',String(period.value===button.dataset.key)));
   $('wipeArea').hidden=mode!=='wipe';wipe(a,b);window.FaxPen?.sync(mode);preloadNearby();
   $('rows').replaceChildren();g.forEach(c=>{const tr=document.createElement('tr');[fmt(c.valid_time),fmt(c.issue_time),'T+'+c.lead_hours,names[c.source]||c.source,fmt(c.download_time)].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.append(td);});const td=document.createElement('td');td.append(original(c));tr.append(td);$('rows').append(tr);});
   const best=entries.find(e=>e.older.length);$('example').disabled=!best;$('exampleInfo').textContent=best?' '+short(best.a.valid_time):' No period has previous runs yet.';
@@ -223,7 +224,7 @@ body.single-view .chart-controls .toolbar{position:static;padding-block:0;border
  $('source').add(new Option('Combined · latest available products',''));
  [...new Set(charts.map(c=>c.source))].sort().forEach(s=>$('source').add(new Option(names[s]||s,s)));
  $('source').value='';
- $('browseMode').onchange=()=>{chosenB='';rebuild();};$('source').onchange=()=>{chosenB='';rebuild();};$('valid').onchange=()=>{chosenB='';render();};
+ $('source').onchange=()=>{chosenB='';rebuild();};$('valid').onchange=()=>{chosenB='';render();};
  function stepPeriod(delta){
   const period=$('valid'),timeline=entries.map(e=>e.key),next=timeline.indexOf(period.value)+delta;
   if(next<0||next>=period.options.length)return;
