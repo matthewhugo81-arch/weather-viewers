@@ -32,7 +32,7 @@ function viewer(imageFactory,fetchMock,dateFactory=Date){
  Object.defineProperty(get('lead'),'innerHTML',{set(html){this.options=[...html.matchAll(/value="(\d+)"/g)].map(m=>({value:m[1],disabled:false}));this.value=this.options[0]?.value||'';}});
  const context={window:{WZModels:r,addEventListener(){}},document:{getElementById:get,addEventListener(){}},Date:dateFactory,fetch:fetchMock,Image:imageFactory||function(){},setInterval(){},setTimeout,clearTimeout,AbortSignal};
  const html=fs.readFileSync(path.join(__dirname,'../Wetterzentrale_Model_Viewer.html'),'utf8');
- const code=html.match(/<script>\s*([^]*?)<\/script>/)[1].replace('updateModeUI();populateLeadOptions();reload(true);','renderRunBar=()=>{};updatePanelDisplay=()=>{};globalThis.subject={candidate,populateLeadOptions,state,e,buildFrames,loadImage,cancelImageLoads,sourceUrl,reload};');
+ const code=html.match(/<script>\s*([^]*?)<\/script>/)[1].replace('updateModeUI();populateLeadOptions();reload(true);','renderRunBar=()=>{};updatePanelDisplay=()=>{};globalThis.subject={candidate,populateLeadOptions,state,e,buildFrames,loadImage,cancelImageLoads,sourceUrl,reload,autoRefresh};');
  vm.runInNewContext(code,context);return context.subject;
 }
 
@@ -137,4 +137,25 @@ test('Revisiting a source slot refreshes its cache key after three minutes',()=>
  const s=viewer(undefined,undefined,Clock),a=s.sourceUrl('icon',12,132,1);
  clock+=120000;assert.equal(s.sourceUrl('icon',12,132,1),a);
  clock+=60000;assert.notEqual(s.sourceUrl('icon',12,132,1),a);
+});
+
+
+test('Run bar puts today 12Z to the right of 06Z and yesterday 18Z first',()=>{
+ class Clock extends Date{constructor(...a){super(...(a.length?a:['2026-10-03T16:00:00Z']))}static now(){return Date.parse('2026-10-03T16:00:00Z')}}
+ const s=viewer(undefined,undefined,Clock);s.e.refRun.value='6';s.e.lead.value='144';s.buildFrames();
+ assert.deepEqual(Array.from(s.state.frames,f=>f.run),[18,0,6,12]);
+ assert.deepEqual(Array.from(s.state.frames,f=>f.lead),[156,150,144,138]);
+ assert(s.state.frames.every(f=>f.valid===s.state.frames[0].valid));s.cancelImageLoads();
+});
+test('Automatic refresh keeps the old image until replacement loads and preserves selection',async()=>{
+ let time=Date.parse('2026-10-03T16:00:00Z');class Clock extends Date{constructor(...a){super(...(a.length?a:[time]))}static now(){return time}}
+ const images=[];function MockImage(){images.push(this);this.naturalWidth=959;this.naturalHeight=741}
+ const s=viewer(MockImage,undefined,Clock);s.e.lead.value='144';s.buildFrames();
+ for(const im of images)im.onload();await new Promise(r=>setImmediate(r));
+ const old=s.e.singleImg.src,idx=s.state.idx;s.state.zoom=2;
+ time+=300001;const pending=s.autoRefresh();assert.equal(s.e.singleImg.src,old);assert.equal(s.state.idx,idx);
+ for(const im of images.slice(4))im.onload();await pending;
+ assert.notEqual(s.e.singleImg.src,old);assert.equal(s.state.idx,idx);assert.equal(s.state.zoom,2);assert.equal(s.e.lead.value,'144');
+ const fresh=s.e.singleImg.src;time+=300001;const failed=s.autoRefresh();
+ for(let i=8;i<images.length;i++)images[i].onerror();await failed;assert.equal(s.e.singleImg.src,fresh);
 });
