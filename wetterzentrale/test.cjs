@@ -70,7 +70,7 @@ test('All-model single view displays the first model even when it finishes first
  s.e.compareMode.value='allmodels';s.e.refRun.value='0';s.e.lead.value='120';s.state.referenceInit=init;
  const charts={};for(const [i,key] of r.order.entries())charts[r.filename(key,0,120,1)]={init:new Date(init).toISOString(),valid:new Date(init+120*3600000).toISOString(),sha:String(i+1).repeat(64)};
  s.state.index={schema:1,checkedAt:new Date().toISOString(),charts};s.buildFrames();
- assert.equal(images.length,4);images[0].onload();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(images.length,6);images[0].onload();await new Promise(resolve=>setImmediate(resolve));
  assert.match(s.e.singleImg.src,/1{64}\.png$/);assert.equal(s.e.empty.style.display,'none');
  for(let i=1;i<images.length;i++)images[i].onload();await new Promise(resolve=>setImmediate(resolve));
  s.buildFrames();await new Promise(resolve=>setImmediate(resolve));assert.equal(images.length,8);assert(s.e.singleImg.src);
@@ -90,11 +90,11 @@ test('Selection changes during initial index loading do not report missing maps'
 test('Rapid forecast navigation cancels obsolete requests and bounds browser concurrency',async()=>{
  const images=[];function MockImage(){images.push(this);this.naturalWidth=959;this.naturalHeight=741;}
  const s=viewer(MockImage),pending=[];
- for(let i=0;i<40;i++)pending.push(s.loadImage('old-'+i));assert.equal(images.length,4);
+ for(let i=0;i<40;i++)pending.push(s.loadImage('old-'+i));assert.equal(images.length,6);
  s.cancelImageLoads();assert((await Promise.all(pending)).every(ok=>ok===false));
  assert(images.every(im=>im.src===''));assert(images.every(im=>im.onload===null));
- const next=s.loadImage('current-168');assert.equal(images.length,5);images.at(-1).onload();assert.equal(await next,true);
- assert.equal(await s.loadImage('current-168'),true);assert.equal(images.length,5);
+ const next=s.loadImage('current-168');assert.equal(images.length,7);images.at(-1).onload();assert.equal(await next,true);
+ assert.equal(await s.loadImage('current-168'),true);assert.equal(images.length,7);
 });
 
 test('A failed image retries with a fresh URL rather than a cached failure',async()=>{
