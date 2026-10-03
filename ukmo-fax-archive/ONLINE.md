@@ -1,42 +1,32 @@
 # Online operation
 
-This project is hosted in `matthewhugo81-arch/weather-viewers`, under `ukmo-fax-archive/`.
+The public viewer remains at https://matthewhugo81-arch.github.io/weather-viewers/ukmo-fax-archive/.
 
-The repository-level `.github/workflows/ukmo-fax.yml` schedules collection every 15 minutes at :07, :22, :37 and :52 UTC. Every triggered run checks all FAX products independently, before the model scan. GitHub can still delay or drop scheduled triggers; this is not an exact timing guarantee. The task uses a cross-platform Node.js collector with Tesseract OCR, rather than the Windows-only local script. Your computer does not need to be running.
+## Independent collection
 
-## What is saved
+Since 3 October 2026, the existing Supabase project runs `fax-source-check-every-five-minutes` via pg_cron/pg_net. Every five minutes it invokes the authenticated `fax-collector` Edge Function once for each of the 17 fixed products in `hosted/products.json`. This runs with the browser and user's computer closed and does not depend on GitHub scheduling or the Wetterzentrale scan.
 
-- Every new original PNG is saved unchanged under its SHA-256 hash.
-- Images and both manifest files are committed to the GitHub repository, so they survive between runs and are recoverable from repository history.
-- Up to four distinct runs are retained per valid time (latest plus three earlier runs). Charts valid more than seven days ago and unreferenced active image files are removed; earlier Git history remains recoverable.
-- Each Sunday at approximately 03:00 UTC, and on manual workflow runs, a separate archive snapshot is uploaded to the workflow's Artifacts area. These extra snapshots expire after 90 days; the committed archive remains.
-- Repository history and workflow artifacts are both on GitHub; this is not an off-provider disaster-recovery copy. Download a periodic snapshot if you want an independent backup.
+Each source is checked independently. New originals are hashed, their printed date and forecast lead are read using pinned Tesseract WASM, and weekday/date/hour/lead consistency is validated before publishing. No run date is inferred from the download time. Unknown layouts or unreadable dates produce a product error while prior charts remain available. A database claim prevents overlapping source checks within two minutes. Failed products retry on the next five-minute cycle.
 
-## Publishing
+Original PNG bytes are stored unchanged in the `fax-archive` storage bucket. Verified metadata is in `fax_chart_archive`; individual check results are in `fax_source_status`. Both tables are inaccessible to anonymous/authenticated database clients; only the authenticated Edge Function's service role writes them. The viewer's existing public anon key authorizes the function API, not database writes. Collection accepts only registry product IDs and never accepts image URLs or chart metadata from the caller.
 
-The workflow preserves the repository's current publishing mode. For branch-based Pages it explicitly requests a Pages rebuild after committing the archive (a bot commit alone does not start a Pages build). For Actions-based Pages it publishes all existing viewers plus this new subdirectory together. It verifies that the public manifest reaches the new timestamp.
+The viewer reads the live manifest directly. It checks every minute and on return to the tab, applying new charts in place while preserving the selected valid time and comparison mode. It defers changes during unsaved drawing work. The header reports the oldest successful source check across all 17 products; errors and overdue checks remain visible. An unavailable live service falls back on initial load to the saved GitHub manifest; an already open live session retains its verified charts while retrying.
 
-Existing branch-based publishing must use `main` and `/ (root)`. The job checks that setting and fails visibly if different, instead of changing settings silently.
+Shared drawings continue using the existing content-hash filenames, so they remain attached to the correct original chart in either archive.
 
-## Checking operation
+## Backup and fallback
 
-Open the repository's **Actions → UKMO FAX online archive**. A green collecting run means collection, validation, archive commit and public-manifest verification succeeded. Every triggered run now collects; the previous 50-minute skip rule has been removed. **Run workflow** performs an immediate collection and also saves an additional backup snapshot. If collection partially fails, successfully downloaded images are still committed and published, then the workflow is marked failed for attention. Unreadable headers stay saved in the review queue.
+The existing GitHub job remains a backup: `scripts/import-hosted.cjs` copies independently collected originals into repository history, verifying SHA-256 before saving, and the regular collector also checks source images. GitHub scheduling is best effort. It is no longer the primary clock or publication route for chart arrivals.
 
-The viewer loads the current JSON snapshot on each hosted page load and shows the snapshot timestamp. The snapshot shows collection overdue after 30 minutes without a source check. The browser checks every minute and on return to the tab, deferring reload while drawings are unsaved. Refreshing the website retrieves the published archive; it does not itself run collection.
+The viewer shows up to four distinct runs per valid time and seven days of past valid times. Historical charts seeded from the previous GitHub archive remain available through their existing filenames. Current sources are additionally copied to hosted storage on their next successful check. Existing repository history and weekly workflow backup artifacts are retained.
 
-GitHub may delay scheduled runs. Public-repository schedules can be disabled after 60 days without repository activity; check the Actions page if updates stop. The collector's regular archive commits normally provide ongoing activity, but this is not a service-level guarantee. Monitor archive size against GitHub's repository and Pages limits as history grows.
+## Verification and maintenance
 
-## Maintenance
+- `node scripts/validate.cjs`: original hashes, date consistency, companion manifest, controls and local links.
+- `node scripts/test-loading.cjs`: image request deduplication, caching and retries.
+- `node scripts/test-refresh.cjs`: delayed status, in-place refresh, drawing protection and failure retention.
+- `node scripts/test-online.cjs`: broad OCR reread of saved charts; a historical analysis header can require review even when previously indexed correctly.
+- Inspect `cron.job_run_details` AND `fax_source_status`: a successful cron dispatch alone does not prove every HTTP request succeeded.
+- `hosted/` contains the deployed function source and fixed product registry. `shared/automatic-edge.js` contains the drawing service.
 
-The Node dependencies are pinned in package.json and pnpm-lock.yaml. Run `pnpm install --frozen-lockfile --ignore-scripts`, then `node scripts/test-online.cjs` to test OCR against saved charts. The test never changes chart originals. `node scripts/collect-online.cjs` polls sources. The original archive.bat remains available for optional local collection, but does not upload local changes.
-
-The scheduled workflow, rather than Windows Task Scheduler, is the normal online collection mechanism. Keep the whole `archive` directory and manifest when moving or restoring this site.
-
-References: [GitHub schedules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule), [Pages build API](https://docs.github.com/en/rest/pages/pages#request-a-github-pages-build).
-
-## Active archive retention
-Each online collection retains the newest four distinct issue times per valid time, preferring Metbrief/Nowster for duplicate source copies, then the latest revision from that source. Valid times older than seven days (UTC, rolling 168 hours) are removed. Future valid times remain. Pending OCR reviews are preserved. Unreferenced PNG files are removed from the active archive. Git commit history and existing backup artifacts retain earlier files: this policy does not rewrite history or cap total Git repository storage. Local PowerShell collection does not apply this online retention step automatically; with Node installed, run node scripts/retain-archive.cjs after local collection.
-
-
-Image navigation uses a per-page cache of immutable chart bytes, shared across panels and neighbour prefetches. A failed request retries once, with an eight-second timeout per attempt, and then presents Retry chart. Prefetching starts after visible charts have loaded. Chart dimensions and original PNGs are unchanged.
-
+Source publication delays remain outside this system's control. The practical target is a new source chart appearing within one five-minute collection interval plus the viewer's one-minute check; this is not an uptime guarantee.

@@ -71,7 +71,7 @@ body.single-view .toolbar{position:sticky;top:0;z-index:10;background:var(--back
 <div class="context"><strong id="validTitle"></strong><span>Newest on the left · earlier forecasts on the right</span></div><p id="availability" class="availability" role="status"></p>
 <section id="panels" class="panels" aria-label="Chart comparison"></section>
 <section id="wipeArea" hidden><div class="wipe-controls"><label for="slider">Reveal previous forecast <output id="percent">50%</output></label><input id="slider" type="range" min="0" max="100" value="50"><p>0% = latest (A) · 100% = previous (B)</p></div><p id="wipeWarning" role="status"></p><div id="wipeCanvas" class="wipe-canvas"></div></section>
-<details class="help"><summary>How to use this page</summary><div class="help-body"><ol><li>Choose a <strong>forecast period</strong>, or use <strong>Previous / Next</strong> beside 4-up to move through the saved valid times. Current dates appear first; previous days remain under Earlier dates. The menu lists earlier forecast leads too: a saved T+84 may share a valid time with a newer T+72 and is then selectable in Chart B. T+24 means 24 hours after that chart's run time. The date alongside it is when the forecast is valid.</li><li><strong>Chart A is automatic:</strong> it always shows the newest saved run for that valid time.</li><li><strong>Chart B starts with the immediately previous run.</strong> Its menu lists older runs from newest to oldest. Both charts forecast exactly the same valid time.</li></ol><p>The default combined view includes the Icelandic 00, 06, 12 and 18 UTC analyses (T+0) and T+24 forecasts, alongside the longer-range charts. These clock hours are cycle times, not T+6/T+12/T+18 forecast leads. An analysis can appear in A with earlier forecasts for that exact time in B once they have been saved.</p><p>Only one run saved? There is no earlier forecast to show yet. The hosted archive is scheduled for checks every 15 minutes. GitHub may delay scheduled checks; the snapshot marks collection overdue after 30 minutes. The page checks for published updates every minute and when you return to the tab. For an offline copy only, run <strong>archive.bat</strong> to collect locally. Lead hours shown are the actual chart products; unavailable T+12 or T+18 products are not created.</p><p>Use <strong>Pen</strong> or a colour button to draw freehand on a chart. Red, green, blue and purple are available. <strong>Lines save automatically for everyone to see</strong>, with no name, account or publishing step. Other open devices refresh the colours every 15 seconds. <strong>Undo</strong> removes your last line on the chart you touched; <strong>Clear mine</strong> removes your own lines on that chart. Other people’s lines remain. If a save is interrupted, the browser keeps it and retries. Existing local drawings sync automatically when that chart is opened. Switch the pen off to scroll normally on touchscreens. Drawing is available in 2-up, Single and 4-up.</p><p>Single shows A only. 4-up adds the next older runs after your B selection. Wipe uses the compact image frame; Open original provides full resolution.</p><button id="example">Show a period with previous runs</button><span id="exampleInfo"></span></div></details>
+<details class="help"><summary>How to use this page</summary><div class="help-body"><ol><li>Choose a <strong>forecast period</strong>, or use <strong>Previous / Next</strong> beside 4-up to move through the saved valid times. Current dates appear first; previous days remain under Earlier dates. The menu lists earlier forecast leads too: a saved T+84 may share a valid time with a newer T+72 and is then selectable in Chart B. T+24 means 24 hours after that chart's run time. The date alongside it is when the forecast is valid.</li><li><strong>Chart A is automatic:</strong> it always shows the newest saved run for that valid time.</li><li><strong>Chart B starts with the immediately previous run.</strong> Its menu lists older runs from newest to oldest. Both charts forecast exactly the same valid time.</li></ol><p>The default combined view includes the Icelandic 00, 06, 12 and 18 UTC analyses (T+0) and T+24 forecasts, alongside the longer-range charts. These clock hours are cycle times, not T+6/T+12/T+18 forecast leads. An analysis can appear in A with earlier forecasts for that exact time in B once they have been saved.</p><p>Only one run saved? There is no earlier forecast to show yet. The hosted archive is checked independently every five minutes. Each new chart is saved and becomes available without a website deployment. The page checks for updates every minute and when you return to the tab, keeping your selected valid time. The header flags delayed source checks. For an offline copy only, run <strong>archive.bat</strong> to collect locally. Lead hours shown are the actual chart products; unavailable T+12 or T+18 products are not created.</p><p>Use <strong>Pen</strong> or a colour button to draw freehand on a chart. Red, green, blue and purple are available. <strong>Lines save automatically for everyone to see</strong>, with no name, account or publishing step. Other open devices refresh the colours every 15 seconds. <strong>Undo</strong> removes your last line on the chart you touched; <strong>Clear mine</strong> removes your own lines on that chart. Other people’s lines remain. If a save is interrupted, the browser keeps it and retries. Existing local drawings sync automatically when that chart is opened. Switch the pen off to scroll normally on touchscreens. Drawing is available in 2-up, Single and 4-up.</p><p>Single shows A only. 4-up adds the next older runs after your B selection. Wipe uses the compact image frame; Open original provides full resolution.</p><button id="example">Show a period with previous runs</button><span id="exampleInfo"></span></div></details>
 <details class="inventory"><summary>Archive details <span id="inventoryCount"></span></summary><div class="table-scroll"><table><thead><tr><th>Valid UTC</th><th>Run UTC</th><th>Lead</th><th>Source</th><th>Downloaded UTC</th><th>Image</th></tr></thead><tbody id="rows"></tbody></table></div></details><p id="pending" class="notice" hidden></p>
 <footer><p>Original charts: Met Office · © Crown Copyright. Stored unchanged. Run time = valid time minus lead.</p><p><a href="https://www.metbrief.com/EGRRb.html#00">Metbrief</a><a href="https://brunnur.vedur.is/flugkort/">Icelandic Met Office</a><a href="README.md">Setup guide</a></p></footer></main><script>document.addEventListener("DOMContentLoaded",()=>{
 'use strict';
@@ -80,12 +80,27 @@ body.single-view .toolbar{position:sticky;top:0;z-index:10;background:var(--back
  const names={'metbrief-nowster':'Metbrief / Nowster',vedur:'Icelandic Met Office'};
  const fmt=s=>s.replace('T',' ').replace(':00:00Z','Z');
  const short=s=>new Date(s).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'UTC',hour12:false}).replace(',','')+'Z';
- let archive=window.FAX_ARCHIVE||{charts:[],pending:[]};
- // Hosted viewers request the current snapshot; offline opening still uses manifest.js.
- if(location.protocol==='https:'||location.protocol==='http:'){
-  try{const response=await fetch('archive/manifest.json?check='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(10000)});if(response.ok)archive=await response.json();}catch{/* Keep the last published companion snapshot available. */}
+ const LIVE_API='https://znlriqmliaszlxlnkeic.supabase.co/functions/v1/fax-collector';
+ const LIVE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpubHJpcW1saWFzemx4bG5rZWljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEwMDYyNTIsImV4cCI6MjEwNjU4MjI1Mn0.p9RNJx-6QabOBVm1GeuaY42xFgxNtAyeQeljkowypfY';
+ const imageBase='https://znlriqmliaszlxlnkeic.supabase.co/storage/v1/object/public/fax-archive/';
+ let archiveError=false;
+ async function readArchive(fallback=true){
+  try{
+   const r=await fetch(LIVE_API,{headers:{Authorization:'Bearer '+LIVE_KEY,apikey:LIVE_KEY},cache:'no-store',signal:AbortSignal.timeout(10000)});
+   if(!r.ok)throw Error('Live archive unavailable');const m=await r.json();
+   if(!m.live_archive||!Array.isArray(m.charts)||!m.charts.length)throw Error('Invalid live archive');
+   archiveError=false;return m;
+  }catch(e){if(!fallback)throw e;}
+  const r=await fetch('archive/manifest.json?check='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(10000)});
+  if(!r.ok)throw Error('Saved archive unavailable');archiveError=true;return r.json();
  }
- const charts=(archive.charts||[]).filter(c=>/^archive\/objects\/[a-z0-9_-]+\/[a-f0-9]{64}\.png$/.test(c.filename)&&Number.isFinite(Date.parse(c.issue_time))&&Date.parse(c.valid_time)-Date.parse(c.issue_time)===c.lead_hours*3600000);
+ function validCharts(m){return (m.charts||[]).filter(c=>/^archive\/objects\/[a-z0-9_-]+\/[a-f0-9]{64}\.png$/.test(c.filename)&&Number.isFinite(Date.parse(c.issue_time))&&Date.parse(c.valid_time)-Date.parse(c.issue_time)===c.lead_hours*3600000&&(!c.image_url||c.image_url===imageBase+c.filename));}
+ let archive=window.FAX_ARCHIVE||{charts:[],pending:[]};
+ if(location.protocol==='https:'||location.protocol==='http:'){
+  try{archive=await readArchive();}catch{archiveError=true;}
+ }
+ let charts=validCharts(archive);
+ const imageURLs=new Map(charts.map(c=>[c.filename,location.protocol==='file:'?c.filename:(c.image_url||c.filename)]));
  let mode='2',chosenB='',groups=new Map();
  function rebuild(){
   groups=new Map();
@@ -109,14 +124,14 @@ body.single-view .toolbar{position:sticky;top:0;z-index:10;background:var(--back
   if(history.children.length)$('valid').append(history);
   if(groups.has(old))$('valid').value=old;
   else if(current.children.length)$('valid').value=current.children[0].value;
-  chosenB='';render();
+  render();
  }
  // Cache immutable images as object URLs, shared by visible panels and prefetches.
  const imageCache=new Map();let preloadTimer;
  function cachedImage(filename,priority='high'){
   if(imageCache.has(filename))return imageCache.get(filename);
   const task=(async()=>{let lastError;for(let attempt=0;attempt<2;attempt++){
-   try{const r=await fetch(filename+(attempt?'?retry=1':''),{signal:AbortSignal.timeout(8000),priority});if(!r.ok)throw Error('HTTP '+r.status);const blob=await r.blob();const signature=new Uint8Array(await blob.slice(0,8).arrayBuffer());if(signature.join(',')!=='137,80,78,71,13,10,26,10')throw Error('Invalid image');return URL.createObjectURL(blob);}catch(e){lastError=e;}
+   try{const r=await fetch((imageURLs.get(filename)||filename)+(attempt?'?retry=1':''),{signal:AbortSignal.timeout(8000),priority});if(!r.ok)throw Error('HTTP '+r.status);const blob=await r.blob();const signature=new Uint8Array(await blob.slice(0,8).arrayBuffer());if(signature.join(',')!=='137,80,78,71,13,10,26,10')throw Error('Invalid image');return URL.createObjectURL(blob);}catch(e){lastError=e;}
   }throw lastError;})();
   imageCache.set(filename,task);task.catch(()=>{if(imageCache.get(filename)===task)imageCache.delete(filename);});return task;
  }
@@ -147,7 +162,7 @@ body.single-view .toolbar{position:sticky;top:0;z-index:10;background:var(--back
   i.addEventListener('error',()=>{imageCache.delete(c.filename);status('Chart could not load. ',true);});
   setTimeout(()=>{if(i.isConnected)start();},0);return i;
  }
- function original(c){const a=document.createElement('a');a.href=c.filename;a.target='_blank';a.rel='noopener';a.textContent='Open original ↗';return a;}
+ function original(c){const a=document.createElement('a');a.href=imageURLs.get(c.filename)||c.filename;a.target='_blank';a.rel='noopener';a.textContent='Open original ↗';return a;}
  function description(c){const cycle=c.issue_time.slice(11,13)+"Z";const date=new Date(c.issue_time).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});return `${cycle} ${c.lead_hours===0?"analysis":"run"} · ${date} · T+${c.lead_hours}`;}
  function panel(c,index,older){
   const p=document.createElement('article');p.className='panel';const h=document.createElement('div');h.className='panel-head';
@@ -213,17 +228,29 @@ body.single-view .toolbar{position:sticky;top:0;z-index:10;background:var(--back
  if(archive.collection_status?.download_failures){$('pending').hidden=false;$('pending').textContent+=' Some chart sources could not be downloaded at the last check; previously saved charts remain available.';}
  rebuild();
  function updateFreshness(){
-  const stamp=archive.collection_status?.checked_at||archive.updated_at;
+  const stamp=archive.collection_status?.checked_at||archive.last_successful_collection||archive.updated_at;
   const age=Date.now()-Date.parse(stamp||'');
-  $('updated').textContent=archive.updated_at?'Snapshot '+fmt(archive.updated_at)+(age>30*60000?' · collection overdue':''):'Archive unavailable';
-  $('updated').title=age>30*60000?'No source check in the last 30 minutes. Saved charts may lag newly published charts.':'Last source check: '+(stamp||'unknown');
+  const overdue=!Number.isFinite(age)||age>15*60000||archiveError||!!archive.collection_status?.download_failures;
+  $('updated').textContent=(stamp?(archive.live_archive?'Sources checked ':'Snapshot ')+fmt(new Date(stamp).toISOString().replace('.000Z','Z')):'Archive unavailable')+(overdue?' · update delayed':'');
+  $('updated').title=overdue?'A source check is overdue or unavailable. Last verified charts remain displayed.':'Every source is checked independently every five minutes.';
+  const errors=archive.collection_status?.errors||[];
+  $('pending').hidden=!errors.length&&!archiveError;
+  $('pending').textContent=errors.length?'Source check needs attention: '+errors.join('; '):archiveError?'Live archive unavailable; showing the last saved charts. Retrying automatically.':'';
+  $('inventoryCount').textContent=charts.length+' stored images';
  }
  updateFreshness();setInterval(updateFreshness,60000);
  if(location.protocol==='https:'||location.protocol==='http:'){
   let refreshing=false;
   async function refreshArchive(){
    updateFreshness();if(refreshing||document.hidden)return;refreshing=true;
-   try{const r=await fetch('archive/manifest.json?refresh='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(10000)});if(r.ok&&(await r.json()).updated_at!==archive.updated_at&&!window.FaxPen?.busy)location.reload();}catch{}finally{refreshing=false;}
+   try{
+    const next=await readArchive(!archive.live_archive);
+    if(window.FaxPen?.busy)return;
+    const changed=(next.revision||next.updated_at)!==(archive.revision||archive.updated_at);
+    archive=next;archiveError=false;
+    if(changed){charts=validCharts(archive);for(const c of charts)imageURLs.set(c.filename,location.protocol==='file:'?c.filename:(c.image_url||c.filename));rebuild();}
+    updateFreshness();
+   }catch{archiveError=true;updateFreshness();}finally{refreshing=false;}
   }
   setInterval(refreshArchive,60000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshArchive();});

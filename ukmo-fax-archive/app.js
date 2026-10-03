@@ -4,12 +4,27 @@
  const names={'metbrief-nowster':'Metbrief / Nowster',vedur:'Icelandic Met Office'};
  const fmt=s=>s.replace('T',' ').replace(':00:00Z','Z');
  const short=s=>new Date(s).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'UTC',hour12:false}).replace(',','')+'Z';
- let archive=window.FAX_ARCHIVE||{charts:[],pending:[]};
- // Hosted viewers request the current snapshot; offline opening still uses manifest.js.
- if(location.protocol==='https:'||location.protocol==='http:'){
-  try{const response=await fetch('archive/manifest.json?check='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(10000)});if(response.ok)archive=await response.json();}catch{/* Keep the last published companion snapshot available. */}
+ const LIVE_API='https://znlriqmliaszlxlnkeic.supabase.co/functions/v1/fax-collector';
+ const LIVE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpubHJpcW1saWFzemx4bG5rZWljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEwMDYyNTIsImV4cCI6MjEwNjU4MjI1Mn0.p9RNJx-6QabOBVm1GeuaY42xFgxNtAyeQeljkowypfY';
+ const imageBase='https://znlriqmliaszlxlnkeic.supabase.co/storage/v1/object/public/fax-archive/';
+ let archiveError=false;
+ async function readArchive(fallback=true){
+  try{
+   const r=await fetch(LIVE_API,{headers:{Authorization:'Bearer '+LIVE_KEY,apikey:LIVE_KEY},cache:'no-store',signal:AbortSignal.timeout(10000)});
+   if(!r.ok)throw Error('Live archive unavailable');const m=await r.json();
+   if(!m.live_archive||!Array.isArray(m.charts)||!m.charts.length)throw Error('Invalid live archive');
+   archiveError=false;return m;
+  }catch(e){if(!fallback)throw e;}
+  const r=await fetch('archive/manifest.json?check='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(10000)});
+  if(!r.ok)throw Error('Saved archive unavailable');archiveError=true;return r.json();
  }
- const charts=(archive.charts||[]).filter(c=>/^archive\/objects\/[a-z0-9_-]+\/[a-f0-9]{64}\.png$/.test(c.filename)&&Number.isFinite(Date.parse(c.issue_time))&&Date.parse(c.valid_time)-Date.parse(c.issue_time)===c.lead_hours*3600000);
+ function validCharts(m){return (m.charts||[]).filter(c=>/^archive\/objects\/[a-z0-9_-]+\/[a-f0-9]{64}\.png$/.test(c.filename)&&Number.isFinite(Date.parse(c.issue_time))&&Date.parse(c.valid_time)-Date.parse(c.issue_time)===c.lead_hours*3600000&&(!c.image_url||c.image_url===imageBase+c.filename));}
+ let archive=window.FAX_ARCHIVE||{charts:[],pending:[]};
+ if(location.protocol==='https:'||location.protocol==='http:'){
+  try{archive=await readArchive();}catch{archiveError=true;}
+ }
+ let charts=validCharts(archive);
+ const imageURLs=new Map(charts.map(c=>[c.filename,location.protocol==='file:'?c.filename:(c.image_url||c.filename)]));
  let mode='2',chosenB='',groups=new Map();
  function rebuild(){
   groups=new Map();
@@ -33,14 +48,14 @@
   if(history.children.length)$('valid').append(history);
   if(groups.has(old))$('valid').value=old;
   else if(current.children.length)$('valid').value=current.children[0].value;
-  chosenB='';render();
+  render();
  }
  // Cache immutable images as object URLs, shared by visible panels and prefetches.
  const imageCache=new Map();let preloadTimer;
  function cachedImage(filename,priority='high'){
   if(imageCache.has(filename))return imageCache.get(filename);
   const task=(async()=>{let lastError;for(let attempt=0;attempt<2;attempt++){
-   try{const r=await fetch(filename+(attempt?'?retry=1':''),{signal:AbortSignal.timeout(8000),priority});if(!r.ok)throw Error('HTTP '+r.status);const blob=await r.blob();const signature=new Uint8Array(await blob.slice(0,8).arrayBuffer());if(signature.join(',')!=='137,80,78,71,13,10,26,10')throw Error('Invalid image');return URL.createObjectURL(blob);}catch(e){lastError=e;}
+   try{const r=await fetch((imageURLs.get(filename)||filename)+(attempt?'?retry=1':''),{signal:AbortSignal.timeout(8000),priority});if(!r.ok)throw Error('HTTP '+r.status);const blob=await r.blob();const signature=new Uint8Array(await blob.slice(0,8).arrayBuffer());if(signature.join(',')!=='137,80,78,71,13,10,26,10')throw Error('Invalid image');return URL.createObjectURL(blob);}catch(e){lastError=e;}
   }throw lastError;})();
   imageCache.set(filename,task);task.catch(()=>{if(imageCache.get(filename)===task)imageCache.delete(filename);});return task;
  }
@@ -71,7 +86,7 @@
   i.addEventListener('error',()=>{imageCache.delete(c.filename);status('Chart could not load. ',true);});
   setTimeout(()=>{if(i.isConnected)start();},0);return i;
  }
- function original(c){const a=document.createElement('a');a.href=c.filename;a.target='_blank';a.rel='noopener';a.textContent='Open original ↗';return a;}
+ function original(c){const a=document.createElement('a');a.href=imageURLs.get(c.filename)||c.filename;a.target='_blank';a.rel='noopener';a.textContent='Open original ↗';return a;}
  function description(c){const cycle=c.issue_time.slice(11,13)+"Z";const date=new Date(c.issue_time).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});return `${cycle} ${c.lead_hours===0?"analysis":"run"} · ${date} · T+${c.lead_hours}`;}
  function panel(c,index,older){
   const p=document.createElement('article');p.className='panel';const h=document.createElement('div');h.className='panel-head';
@@ -137,17 +152,29 @@
  if(archive.collection_status?.download_failures){$('pending').hidden=false;$('pending').textContent+=' Some chart sources could not be downloaded at the last check; previously saved charts remain available.';}
  rebuild();
  function updateFreshness(){
-  const stamp=archive.collection_status?.checked_at||archive.updated_at;
+  const stamp=archive.collection_status?.checked_at||archive.last_successful_collection||archive.updated_at;
   const age=Date.now()-Date.parse(stamp||'');
-  $('updated').textContent=archive.updated_at?'Snapshot '+fmt(archive.updated_at)+(age>30*60000?' · collection overdue':''):'Archive unavailable';
-  $('updated').title=age>30*60000?'No source check in the last 30 minutes. Saved charts may lag newly published charts.':'Last source check: '+(stamp||'unknown');
+  const overdue=!Number.isFinite(age)||age>15*60000||archiveError||!!archive.collection_status?.download_failures;
+  $('updated').textContent=(stamp?(archive.live_archive?'Sources checked ':'Snapshot ')+fmt(new Date(stamp).toISOString().replace('.000Z','Z')):'Archive unavailable')+(overdue?' · update delayed':'');
+  $('updated').title=overdue?'A source check is overdue or unavailable. Last verified charts remain displayed.':'Every source is checked independently every five minutes.';
+  const errors=archive.collection_status?.errors||[];
+  $('pending').hidden=!errors.length&&!archiveError;
+  $('pending').textContent=errors.length?'Source check needs attention: '+errors.join('; '):archiveError?'Live archive unavailable; showing the last saved charts. Retrying automatically.':'';
+  $('inventoryCount').textContent=charts.length+' stored images';
  }
  updateFreshness();setInterval(updateFreshness,60000);
  if(location.protocol==='https:'||location.protocol==='http:'){
   let refreshing=false;
   async function refreshArchive(){
    updateFreshness();if(refreshing||document.hidden)return;refreshing=true;
-   try{const r=await fetch('archive/manifest.json?refresh='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(10000)});if(r.ok&&(await r.json()).updated_at!==archive.updated_at&&!window.FaxPen?.busy)location.reload();}catch{}finally{refreshing=false;}
+   try{
+    const next=await readArchive(!archive.live_archive);
+    if(window.FaxPen?.busy)return;
+    const changed=(next.revision||next.updated_at)!==(archive.revision||archive.updated_at);
+    archive=next;archiveError=false;
+    if(changed){charts=validCharts(archive);for(const c of charts)imageURLs.set(c.filename,location.protocol==='file:'?c.filename:(c.image_url||c.filename));rebuild();}
+    updateFreshness();
+   }catch{archiveError=true;updateFreshness();}finally{refreshing=false;}
   }
   setInterval(refreshArchive,60000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshArchive();});

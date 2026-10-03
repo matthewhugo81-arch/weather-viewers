@@ -1,6 +1,6 @@
 # UKMO FAX Run Archive & Comparison
 
-**Online operation:** see [ONLINE.md](ONLINE.md) for the hourly GitHub collector, public publishing and archive backups. The local Windows instructions below are optional; they are not required to keep the hosted site current.
+**Online operation:** see [ONLINE.md](ONLINE.md) for the independent five-minute hosted collector, live updates and GitHub archive backups. The local Windows instructions below are optional; they are not required to keep the hosted site current.
 
 A portable, dependency-free HTML/CSS/JavaScript viewer plus a Windows chart collector. Compare forecasts **for exactly the same valid time** across nominal runs and lead hours. Includes Single, 2-up, 4-up and wipe modes, per-panel run selection, a lead-labelled period selector and previous-run selector, an inventory and links to unchanged originals. All times are UTC.
 

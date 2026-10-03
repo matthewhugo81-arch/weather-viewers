@@ -43,6 +43,7 @@ async function collect(root=path.resolve(__dirname,'..')){
  const now=()=>new Date().toISOString().replace(/\.\d{3}Z$/,'Z');
  let worker=null,failed=0,added=0;const errors=[];
  try{
+  try{await require('./import-hosted.cjs').importHosted(root,m);}catch(e){failed++;errors.push('Hosted backup: '+e.message);console.warn(errors.at(-1));}
   for(const p of products){
    try{
     if(!/^[a-z0-9_-]+$/.test(p.source)||!Number.isInteger(p.lead_hours))throw Error('Invalid source registry entry');

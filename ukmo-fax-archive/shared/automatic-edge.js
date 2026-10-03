@@ -38,9 +38,10 @@ Deno.serve(async req=>{
   b.strokes=[b.stroke];
   let total=0;for(const s of b.strokes){if(!s||!colours.has(s.colour)||!Array.isArray(s.points)||s.points.length<2||s.points.length>5000)return respond({error:'Invalid line'},400);total+=s.points.length;for(const p of s.points)if(!Array.isArray(p)||p.length!==2||p.some(n=>typeof n!=='number'||!Number.isFinite(n)||n<0||n>5000))return respond({error:'Invalid point'},400);}
   if(total>10000)return respond({error:'Too many points in this drawing'},400);
-  if(Date.now()-manifest.at>60000){const m=await fetch(SITE+'archive/manifest.json?shared='+Math.floor(Date.now()/60000));if(!m.ok)throw new Error('Cannot verify chart; try again shortly');manifest={at:Date.now(),charts:(await m.json()).charts};}
-  if(!manifest.charts.some(c=>c.filename===b.chart))return respond({error:'This chart is no longer in the current archive'},400);
-  let dims=dimensions.get(b.chart);if(!dims){const im=await fetch(SITE+b.chart);if(!im.ok)throw new Error('Cannot verify chart image');const bytes=await im.arrayBuffer();const v=new DataView(bytes);if(v.byteLength<24||v.getUint32(0)!==0x89504e47)throw new Error('Invalid chart image');dims=[v.getUint32(16),v.getUint32(20)];dimensions.set(b.chart,dims);}const [w,h]=dims;
+  let hosted=(await db('fax_chart_archive?chart->>filename=eq.'+encodeURIComponent(b.chart)+'&select=chart&limit=1'))[0]?.chart;
+  if(!hosted&&Date.now()-manifest.at>60000){const m=await fetch(SITE+'archive/manifest.json?shared='+Math.floor(Date.now()/60000));if(!m.ok)throw new Error('Cannot verify chart; try again shortly');manifest={at:Date.now(),charts:(await m.json()).charts};}
+  if(!hosted&&!manifest.charts.some(c=>c.filename===b.chart))return respond({error:'This chart is no longer in the current archive'},400);
+  let dims=dimensions.get(b.chart);if(!dims){const im=await fetch(hosted?.image_url||SITE+b.chart);if(!im.ok)throw new Error('Cannot verify chart image');const bytes=await im.arrayBuffer();const v=new DataView(bytes);if(v.byteLength<24||v.getUint32(0)!==0x89504e47)throw new Error('Invalid chart image');dims=[v.getUint32(16),v.getUint32(20)];dimensions.set(b.chart,dims);}const [w,h]=dims;
   if(b.strokes.some(s=>s.points.some(p=>p[0]>w||p[1]>h)))return respond({error:'Drawing does not match chart dimensions'},400);
   const network=await hash((Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'')+'|'+new Date().toISOString().slice(0,10)+'|'+(req.headers.get('x-forwarded-for')?.split(',')[0]||'unknown'));
   const strokes=b.strokes.map(s=>({colour:s.colour,points:s.points}));
