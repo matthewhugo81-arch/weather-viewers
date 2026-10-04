@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Wetterzentrale Run-to-Run Model Viewer v20</title>
+<title>Wetterzentrale Run-to-Run Model Viewer v21</title>
 <style>
 :root{
   --bg:#071018;--panel:#0d1822;--panel2:#132330;--line:#294052;
@@ -71,7 +71,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 <header>
   <div class="brand">
     <h1>Wetterzentrale • Run-to-Run Viewer</h1>
-    <div class="sub">Live Wetterzentrale charts • check printed Init/Valid dates • v20 • auto-refresh 5 min</div>
+    <div class="sub">Live Wetterzentrale charts • check printed Init/Valid dates • v21 • auto-refresh 5 min</div>
   </div>
   <div class="toolbar">
     <div class="group"><span class="label">Mode</span><select id="compareMode">
@@ -94,7 +94,9 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
       <option value="2">850 hPa temperature</option>
       <option value="34">850 hPa Temp. Deviation</option>
       <option value="21">300 hPa Wind</option>
+      <option value="4">Precipitation</option>
     </select></div>
+    <button id="rainToggle" class="small" title="Switch between height/MSLP and precipitation at the same model, run and forecast hour">Height/MSLP ↔ Rain</button>
     <div class="group"><span class="label">Run</span><select id="refRun" title="Reference run: opens this run first; bottom buttons compare earlier runs">
       <option value="0">00Z</option>
       <option value="6">06Z</option>
@@ -146,6 +148,8 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
   <div class="note">History is anchored to the selected run: earlier cycles are ordered oldest left, with the selected run last and opened by default. For a selected 12Z run, the order is the preceding 18Z, then 00Z, 06Z and 12Z. Forecast-hour offsets target the same valid time; publication can temporarily leave an older printed date in a slot. <b>EC ENS uses the same forecast lead</b>, so its earlier cycle targets an earlier valid time. These are requested comparisons; the printed chart dates are authoritative. Unsupported cycles, variables and forecast hours are excluded. Loaded panels appear together without empty gaps.</div>
   <h3>Availability and reload</h3>
   <div class="note">The viewer does not wait for a GitHub availability index or copied images. Charts are reused briefly while navigating; after three minutes, revisiting a selection requests current source images. Visible charts refresh automatically every five minutes, keeping existing images visible until replacements load. Returning to the tab refreshes overdue charts. Reload forces fresh requests immediately. Wetterzentrale may publish a run progressively. An unavailable image can be retried with Reload.</div>
+  <h3>Precipitation</h3>
+  <div class="note">Rain loads only when selected. The Rain / Height-MSLP button keeps the same model, run and forecast hour. Amounts are in mm over the period printed at the top of each chart; that period varies by model and forecast range, so compare equal accumulation periods. The forecast hour is the end of that period. ECMWF rain is supplied through T+144; ensemble-mean rain is not offered here. T+0 has no forecast accumulation. Source Init/Valid dates remain authoritative.</div>
   <h3>Display</h3>
   <div class="formRow"><label>Animation mode</label><select id="animMode"><option value="forward" selected>Forward then restart</option><option value="rock">Rock back and forth</option></select></div>
   <div class="formRow"><label>Latest-frame hold</label><select id="hold"><option value="0">0 s</option><option value="750" selected>0.75 s</option><option value="1500">1.5 s</option><option value="2500">2.5 s</option></select></div>
@@ -153,15 +157,15 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 </aside>
 <div id="toast"></div>
 
-<script src="wetterzentrale/models.js"></script>
+<script src="wetterzentrale/models.js?v=21"></script>
 <script>
 (() => {
 'use strict';
 const $=id=>document.getElementById(id),e={};
-['compareMode','modelGroup','model','variable','refRun','lead','speed','refresh','openWz','settings','fullscreen','statusDot','statusText','singleView','singleStage','singleImg','modelLabel','varLabel','runLabel','sameValid','frameLabel','imageUrlLabel','empty','prev','play','next','topPrev','topNext','runBar','viewer','drawer','animMode','hold','speedPlay','speedStop','closeDrawer','toast'].forEach(id=>e[id]=$(id));
+['rainToggle','compareMode','modelGroup','model','variable','refRun','lead','speed','refresh','openWz','settings','fullscreen','statusDot','statusText','singleView','singleStage','singleImg','modelLabel','varLabel','runLabel','sameValid','frameLabel','imageUrlLabel','empty','prev','play','next','topPrev','topNext','runBar','viewer','drawer','animMode','hold','speedPlay','speedStop','closeDrawer','toast'].forEach(id=>e[id]=$(id));
 if(!window.WZModels){e.statusText.textContent='Model configuration did not load; refresh the page';e.empty.style.display='flex';return;}
-const {models:MODELS,order:MODEL_ORDER,leads:modelLeads,filename}=window.WZModels;
-const VARS={1:'500 hPa height + MSLP',2:'850 hPa temperature',34:'850 hPa Temp. Deviation',21:'300 hPa Wind'};
+const {models:MODELS,order:MODEL_ORDER,leads:modelLeads,filename,rainLeads}=window.WZModels;
+const VARS={1:'500 hPa height + MSLP',2:'850 hPa temperature',34:'850 hPa Temp. Deviation',21:'300 hPa Wind',4:'Precipitation (mm; accumulation period printed on chart)'};
 const HOUR=3600000;
 let imageEpoch=Date.now(),lastRefresh=Date.now(),refreshing=false;
 const REFRESH_MS=5*60*1000;
@@ -176,13 +180,21 @@ function nominalRun(run){const d=new Date();d.setUTCHours(run,0,0,0);if(+d>Date.
 function sourceUrl(key,run,lead,v){return "https://wetterzentrale.de/maps/"+filename(key,run,lead,v)+"?v="+Math.max(imageEpoch,Math.floor(Date.now()/180000)*180000)}
 function setEmptyText(title,text){e.empty.querySelector('.emptyTitle').textContent=title;e.empty.querySelector('.emptyText').textContent=text}
 function showEmpty(){e.empty.style.display='flex';e.singleImg.removeAttribute('src');setEmptyText('No maps available for this selection',state.frames.map(f=>f.model+': '+f.reason).join(' • '))}
+function supportsVariable(key,v){return v===4?rainLeads(key,+e.refRun.value).length>0:MODELS[key].vars.includes(v)}
+function updateRainToggle(){
+ const f=state.frames[state.idx],key=f?.key||e.model.value;
+ e.rainToggle.disabled=+e.variable.value!==4&&!rainLeads(key,f?.run??+e.refRun.value).includes(f?.lead??+e.lead.value);
+ e.rainToggle.textContent=+e.variable.value===4?'↔ Height/MSLP':'↔ Rain';
+ e.rainToggle.title=e.rainToggle.disabled?'Precipitation is not supplied for this model and forecast hour':'Switch height/MSLP and rain without changing the model, run or forecast hour';
+}
+function changeVariable(v){const f=state.frames[state.idx];e.variable.value=String(v);buildFrames(f?.key,f?.run);}
 function updateModeUI(){
  const all=e.compareMode.value==='allmodels',m=MODELS[e.model.value];
  e.modelGroup.style.display=all?'none':'flex';
  [...e.refRun.options].forEach(o=>o.disabled=!all&&!m.cycles.includes(+o.value));
  if(!all&&!m.cycles.includes(+e.refRun.value))e.refRun.value=String(m.cycles[0]);
- [...e.variable.options].forEach(o=>o.disabled=!all&&!m.vars.includes(+o.value));
- if(!all&&!m.vars.includes(+e.variable.value))e.variable.value='1';
+ [...e.variable.options].forEach(o=>o.disabled=!all&&!supportsVariable(e.model.value,+o.value));
+ if(!all&&!supportsVariable(e.model.value,+e.variable.value))e.variable.value='1';
 }
 function populateLeadOptions(){
  const current=e.lead.value===''?96:+e.lead.value;
@@ -202,14 +214,15 @@ function candidate(key,run,lead,init,age=0,sameLead=false){
  const m=MODELS[key],v=+e.variable.value,valid=init+lead*HOUR;
  const f={key,model:m.name,run,lead,age,init,valid,sameLead,ok:false,reason:'',url:''};
  if(!m.cycles.includes(run))f.reason='This model does not supply this cycle';
- else if(!m.vars.includes(v))f.reason='Variable not supplied';
+ else if(!supportsVariable(key,v))f.reason='Variable not supplied';
+ else if(v===4&&!rainLeads(key,run).includes(lead))f.reason=key==='ecm'&&lead>144?'Precipitation ends T+144':lead===0?'Precipitation starts after T+0':'Precipitation not supplied at this hour';
  else if(lead<0)f.reason='Target valid time precedes this run';
  else if(lead>240)f.reason='Beyond the T+240 comparison ceiling';
  else if(!modelLeads(key,run).includes(lead))f.reason=`Required T+${lead} is not supplied; this cycle ends at T+${modelLeads(key,run).at(-1)}`;
  else{f.ok=null;f.url=sourceUrl(key,run,lead,v);}
  return f;
 }
-function buildFrames(){
+function buildFrames(preferredKey=null,preferredRun=null){
  cancelImageLoads();stop();resetZoom();state.generation++;const gen=state.generation;
  const all=e.compareMode.value==='allmodels',run=+e.refRun.value,lead=+e.lead.value;
  const init=state.referenceInit!==null&&new Date(state.referenceInit).getUTCHours()===run?state.referenceInit:nominalRun(run);
@@ -220,10 +233,11 @@ function buildFrames(){
   state.frames=m.cycles.map(r=>({run:r,age:cycleAge(run,r)})).sort((a,b)=>b.age-a.age)
    .map(x=>candidate(key,x.run,m.historySameLead?lead:lead+x.age,init-x.age*HOUR,x.age,!!m.historySameLead));
  }
- state.idx=all?0:state.frames.length-1;e.singleImg.removeAttribute('src');e.frameLabel.textContent='';e.imageUrlLabel.textContent='';
+ const preferred=typeof preferredKey==='string'?state.frames.findIndex(f=>f.key===preferredKey&&(all||f.run===preferredRun)):-1;
+ state.idx=preferred>=0?preferred:all?0:state.frames.length-1;e.singleImg.removeAttribute('src');e.frameLabel.textContent='';e.imageUrlLabel.textContent='';
  e.modelLabel.textContent=all?'All models':MODELS[e.model.value].name;e.varLabel.textContent=VARS[+e.variable.value];
  e.runLabel.textContent=`${padRun(run)}Z • T+${padLead(lead)}`;e.sameValid.textContent='Target valid: '+dateText(init+lead*HOUR)+' • check printed dates';
- e.empty.style.display='none';renderRunBar();
+ e.empty.style.display='none';renderRunBar();updateRainToggle();
  const pending=state.frames.filter(f=>f.ok===null);if(!all)pending.reverse();
  if(!pending.length){showEmpty();status('No maps supplied for this selection','bad');return}
  setEmptyText('Loading charts…','Live maps appear as soon as each image is ready.');e.empty.style.display=$('displayView').value==='panels'?'none':'flex';
@@ -235,7 +249,7 @@ function buildFrames(){
   if(u.length){e.empty.style.display='none';if(!e.singleImg.getAttribute('src')||state.frames[state.idx]?.ok!==true)showFrame(u[0]);}
   if(done===pending.length){
    if(!u.length){showEmpty();setEmptyText('Image loading failed','Wetterzentrale did not return a usable image. The run may still be publishing; use Reload to retry.');status('Image requests failed — use Reload to retry','bad');}
-   else{showFrame(all?state.idx:u[u.length-1]);status(`${u.length}/${state.frames.length} images loaded • check printed Init/Valid dates`,'ok');}
+   else{showFrame(preferred>=0&&state.frames[preferred].ok===true?preferred:all?state.idx:u[u.length-1]);status(`${u.length}/${state.frames.length} images loaded • check printed Init/Valid dates`,'ok');}
    
   }
  });
@@ -306,7 +320,7 @@ function showFrame(i){
  const relation=f.sameLead&&f.age?`${ageText} • same T+; different valid time`:f.age?`${ageText} • targets same valid time`:'Selected cycle';
  e.sameValid.textContent=`Requested ${padRun(f.run)}Z • ${relation} • check printed Init/Valid dates`;
  e.frameLabel.textContent=`Chart ${usable().indexOf(i)+1} / ${usable().length}`;e.imageUrlLabel.textContent=filename(f.key,f.run,f.lead,+e.variable.value);
- [...e.runBar.children].forEach((b,k)=>b.classList.toggle('active',k===i));updatePanelDisplay();
+ [...e.runBar.children].forEach((b,k)=>b.classList.toggle('active',k===i));updatePanelDisplay();updateRainToggle();
 }
 function renderRunBar(){
  e.runBar.replaceChildren();state.frames.forEach((f,i)=>{
@@ -383,7 +397,8 @@ displayView.onchange=()=>{stop();panelExpanded=false;if(displayView.value==='pan
 backToPanels.onclick=()=>{stop();panelExpanded=false;updatePanelDisplay()};
 e.compareMode.onchange=()=>{state.referenceInit=null;updateModeUI();populateLeadOptions();chooseLatest();buildFrames()};
 e.model.onchange=()=>{state.referenceInit=null;updateModeUI();populateLeadOptions();chooseLatest();buildFrames()};
-e.variable.onchange=()=>{buildFrames()};
+e.variable.onchange=()=>changeVariable(e.variable.value);
+e.rainToggle.onclick=()=>changeVariable(+e.variable.value===4?1:4);
 e.refRun.onchange=()=>{state.referenceInit=nominalRun(+e.refRun.value);populateLeadOptions();buildFrames()};
 e.lead.onchange=buildFrames;e.refresh.onclick=()=>reload(false);e.openWz.onclick=openWz;
 e.prev.onclick=()=>{stop();step(-1)};e.next.onclick=()=>{stop();step(1)};e.play.onclick=()=>state.playing?stop():play();e.speedPlay.onclick=e.play.onclick;e.speedStop.onclick=stop;

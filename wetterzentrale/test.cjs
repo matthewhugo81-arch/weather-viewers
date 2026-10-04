@@ -32,7 +32,7 @@ function viewer(imageFactory,fetchMock,dateFactory=Date){
  Object.defineProperty(get('lead'),'innerHTML',{set(html){this.options=[...html.matchAll(/value="(\d+)"/g)].map(m=>({value:m[1],disabled:false}));this.value=this.options[0]?.value||'';}});
  const context={window:{WZModels:r,addEventListener(){}},document:{getElementById:get,addEventListener(){}},Date:dateFactory,fetch:fetchMock,Image:imageFactory||function(){},setInterval(){},setTimeout,clearTimeout,AbortSignal};
  const html=fs.readFileSync(path.join(__dirname,'../Wetterzentrale_Model_Viewer.html'),'utf8');
- const code=html.match(/<script>\s*([^]*?)<\/script>/)[1].replace('updateModeUI();populateLeadOptions();reload(true);','renderRunBar=()=>{};updatePanelDisplay=()=>{};globalThis.subject={candidate,populateLeadOptions,state,e,buildFrames,loadImage,cancelImageLoads,sourceUrl,reload,autoRefresh};');
+ const code=html.match(/<script>\s*([^]*?)<\/script>/)[1].replace('updateModeUI();populateLeadOptions();reload(true);','renderRunBar=()=>{};updatePanelDisplay=()=>{};globalThis.subject={candidate,populateLeadOptions,state,e,buildFrames,loadImage,cancelImageLoads,sourceUrl,reload,autoRefresh,changeVariable};');
  vm.runInNewContext(code,context);return context.subject;
 }
 
@@ -173,3 +173,30 @@ test('Automatic refresh keeps the old image until replacement loads and preserve
  });
 
 
+
+test('Precipitation excludes T+0, ensembles and obsolete ECMWF long-range PNG slots',()=>{
+ assert.deepEqual(r.rainLeads('ecmens',0),[]);assert.deepEqual(r.rainLeads('gfsens',0),[]);
+ assert.equal(r.rainLeads('ecm',0).at(-1),144);assert.equal(r.rainLeads('ukmo',6).at(-1),66);assert(!r.rainLeads('gfs',0).includes(0));
+ const s=viewer();s.e.variable.value='4';assert.equal(s.candidate('ecm',0,168,now).url,'');assert.equal(s.candidate('ecmens',0,96,now).url,'');
+ assert.match(s.candidate('gfs',0,126,now).url,/GFSOPEU00_126_4/);
+});
+test('Rain toggle keeps the selected all-model chart, run and lead when another model loads first',async()=>{
+ const images=[];function Image(){images.push(this);this.naturalWidth=959;this.naturalHeight=741;}
+ const s=viewer(Image);s.e.compareMode.value='allmodels';s.e.refRun.value='0';s.e.lead.value='96';s.buildFrames();
+ for(const im of images)im.onload();await new Promise(r=>setImmediate(r));for(const im of images)if(im.onload)im.onload();await new Promise(r=>setImmediate(r));
+ s.state.idx=s.state.frames.findIndex(f=>f.key==='gem');const count=images.length;s.changeVariable(4);
+ for(const im of images.slice(count))if(im.onload)im.onload();await new Promise(r=>setImmediate(r));
+ assert.equal(s.state.frames[s.state.idx].key,'gem');assert.equal(s.e.refRun.value,'0');assert.equal(s.e.lead.value,'96');assert.match(s.e.singleImg.src,/GEMOPEU00_96_4/);
+ s.changeVariable(1);await new Promise(r=>setImmediate(r));assert.equal(s.state.frames[s.state.idx].key,'gem');assert.match(s.e.singleImg.src,/GEMOPEU00_96_1/);
+});
+
+test('Rain toggle preserves an earlier history frame and requests no rain until selected',async()=>{
+ const images=[];function Image(){images.push(this);this.naturalWidth=959;this.naturalHeight=741;}
+ const s=viewer(Image);s.e.model.value='gfs';s.e.refRun.value='12';s.e.lead.value='96';s.buildFrames();
+ assert(images.every(im=>!im.src.includes('_4.png')));
+ for(const im of images)im.onload();await new Promise(r=>setImmediate(r));
+ s.state.idx=1;const old=s.state.frames[1],count=images.length;s.changeVariable(4);
+ for(const im of images.slice(count))im.onload();await new Promise(r=>setImmediate(r));
+ assert.equal(s.state.frames[s.state.idx].run,old.run);assert.equal(s.state.frames[s.state.idx].lead,old.lead);
+ assert.equal(s.e.refRun.value,'12');assert.equal(s.e.lead.value,'96');
+});

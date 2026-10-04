@@ -21,6 +21,12 @@
    .filter(h=>key==='ecmens'?h%24===0:key==='ecm'&&h>144?h%24===0:true);
  }
  function filename(key,run,lead,v){return `${models[key].prefix}${String(run).padStart(2,'0')}_${lead}_${v}.png`;}
- const api={ceiling,order,models,leads,filename};
+ // Live precipitation is intentionally separate from the scheduled snapshot collector.
+ // ECMWF's current precipitation product ends at 144 h; older PNGs persist beyond it.
+ function rainLeads(key,run){
+  if(!['gfs','ecm','aifs','gem','icon','ukmo'].includes(key))return [];
+  return leads(key,run).filter(h=>h>0&&(key!=='ecm'||h<=144));
+ }
+ const api={ceiling,order,models,leads,filename,rainLeads};
  if(typeof module==='object'&&module.exports)module.exports=api;else root.WZModels=api;
 })(typeof window==='object'?window:globalThis);
