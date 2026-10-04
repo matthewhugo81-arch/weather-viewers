@@ -32,7 +32,7 @@ function viewer(imageFactory,fetchMock,dateFactory=Date){
  Object.defineProperty(get('lead'),'innerHTML',{set(html){this.options=[...html.matchAll(/value="(\d+)"/g)].map(m=>({value:m[1],disabled:false}));this.value=this.options[0]?.value||'';}});
  const context={window:{WZModels:r,addEventListener(){}},document:{getElementById:get,addEventListener(){}},Date:dateFactory,fetch:fetchMock,Image:imageFactory||function(){},setInterval(){},setTimeout,clearTimeout,AbortSignal};
  const html=fs.readFileSync(path.join(__dirname,'../Wetterzentrale_Model_Viewer.html'),'utf8');
- const code=html.match(/<script>\s*([^]*?)<\/script>/)[1].replace('updateModeUI();populateLeadOptions();reload(true);','renderRunBar=()=>{};updatePanelDisplay=()=>{};globalThis.subject={candidate,populateLeadOptions,state,e,buildFrames,loadImage,cancelImageLoads,sourceUrl,reload,autoRefresh};');
+ const code=html.match(/<script>\s*([^]*?)<\/script>/)[1].replace('updateModeUI();populateLeadOptions();reload(true);','renderRunBar=()=>{};updatePanelDisplay=()=>{};globalThis.subject={candidate,populateLeadOptions,state,e,buildFrames,loadImage,cancelImageLoads,sourceUrl,reload,autoRefresh,dateInfo,refreshDateInfo};');
  vm.runInNewContext(code,context);return context.subject;
 }
 
@@ -127,9 +127,9 @@ test('Reload forces a fresh source URL while selection is preserved',async()=>{
  assert.match(s.e.sameValid.textContent,/check printed Init\/Valid dates/);
  assert.doesNotMatch(s.e.statusText.textContent,/verified/);
 });
-test('The viewer has no manifest fetch or expiry gate',()=>{
+test('The viewer keeps source loading independent of advisory dates',()=>{
  const fs=require('node:fs'),path=require('node:path');const html=fs.readFileSync(path.join(__dirname,'../Wetterzentrale_Model_Viewer.html'),'utf8');
- assert(!html.includes('availability.json'));assert(!html.includes('fetch('));assert(!html.includes('MAX_INDEX_AGE'));
+ assert(!html.includes('await refreshDateInfo'));assert(!html.includes('MAX_INDEX_AGE'));assert(html.includes('void refreshDateInfo()')); 
 });
 
 test('Revisiting a source slot refreshes its cache key after three minutes',()=>{
@@ -172,3 +172,20 @@ test('Automatic refresh keeps the old image until replacement loads and preserve
  assert.equal(s.state.frames[s.state.idx].run,12);assert.match(s.e.singleImg.src,/ECMOPEU12_96_1/);
  });
 
+
+test('A stalled date check never delays source images',async()=>{
+ const images=[];function Image(){images.push(this);this.naturalWidth=959;this.naturalHeight=741;}
+ const s=viewer(Image,()=>new Promise(()=>{}));void s.refreshDateInfo();
+ const p=s.loadImage('source.png');images[0].onload();assert.equal(await p,true);
+});
+test('Date metadata is advisory, rejects mismatches and identifies older runs',async()=>{
+ const init=Date.now()-48*3600000;const d=new Date(init);d.setUTCMinutes(0,0,0);const start=+d,run=d.getUTCHours();
+ const f={key:'gfs',run,lead:24,init:start+24*3600000};
+ const c={init:new Date(start).toISOString(),valid:new Date(start+24*3600000).toISOString(),method:'printed-header-ocr'};
+ const data={schema:1,checkedAt:new Date().toISOString(),charts:{[r.filename('gfs',run,24,1)]:c}};
+ const s=viewer(undefined,async()=>({ok:true,json:async()=>data}));
+ assert.match(s.dateInfo(f).short,/unchecked/);await s.refreshDateInfo();assert.match(s.dateInfo(f).short,/older at check/);
+ assert.match(s.dateInfo(f).text,/live chart may have updated/);
+ c.valid=c.init;assert.match(s.dateInfo(f).short,/unchecked/);
+ c.valid=new Date(start+24*3600000).toISOString();data.checkedAt=new Date(Date.now()-3*3600000).toISOString();assert.match(s.dateInfo(f).short,/check aged/);
+});
