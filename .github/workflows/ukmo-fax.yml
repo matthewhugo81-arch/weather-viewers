@@ -10,6 +10,7 @@ on:
       - 'ukmo-fax-archive/**'
       - '.github/workflows/ukmo-fax.yml'
       - 'Wetterzentrale_Model_Viewer.html'
+      - 'UK_Model_Viewer.html'
       - 'Satellite_Image_Viewer.html'
       - 'wetterzentrale/**'
 permissions:
@@ -166,3 +167,4 @@ jobs:
         run: |
           echo 'The model-date check failed. Any previous snapshot was retained; the viewer labels delayed snapshots with their actual dates.' >&2
           exit 1
+
