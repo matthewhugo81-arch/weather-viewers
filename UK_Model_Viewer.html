@@ -146,6 +146,32 @@ body.mosaic-mode .placeholder small{font-size:9px}
 @media (max-width:720px){.lightbox{padding:8px}.lightbox-inner{width:100vw;height:96vh}.lightbox-close{top:8px;right:8px}}
 @media (max-width:1250px){:root{--cols:2}.controls{grid-template-columns:1fr 1fr}.timeline{grid-column:1/-1}.validbar{grid-template-columns:1fr}.valid-side,.valid-side.right{text-align:center}.header{flex-direction:column}.header-right{justify-content:flex-start}}
 @media (max-width:720px){:root{--cols:1}.grid{gap:10px}.header,.controls,.validbar{padding-left:12px;padding-right:12px}.content{padding-left:8px;padding-right:8px}.controls{grid-template-columns:1fr}.ctrl-group{flex-wrap:wrap}.timeline{grid-column:auto}.title h1{font-size:19px}}
+/* Keep controls compact so the charts occupy more of the viewport. */
+.header,body.mosaic-mode .header{align-items:center;gap:8px;padding:5px 8px 3px;flex-direction:row}
+.title h1,body.mosaic-mode .title h1{font-size:15px;margin:0;line-height:1.2}
+.title p{display:none}
+.header-right{gap:4px}
+.badge,body.mosaic-mode .badge{font-size:10px;padding:2px 6px}
+.controls,body.mosaic-mode .controls{display:flex;flex-wrap:wrap;gap:5px 9px;padding:3px 8px 5px}
+.ctrl-group{gap:4px}
+.controls button,.controls select{font-size:12px;min-height:28px;padding:4px 7px;border-radius:5px}
+.controls label{font-size:10px!important}
+.controls button.icon{width:29px;font-size:13px}
+#paramSel{max-width:200px}
+.run-buttons{display:flex;gap:2px}
+.run-buttons button{padding:4px 6px}
+.run-buttons button[aria-pressed="true"]{background:#0c5c8f;border-color:#75d7ff;color:#fff}
+.controls button:focus-visible,.controls select:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+.timeline{flex:1;min-width:140px;gap:5px}
+.lead-readout{min-width:44px;padding:4px;font-size:12px;border-radius:5px}
+.validbar,body.mosaic-mode .validbar{grid-template-columns:1fr auto 1fr;gap:8px;padding:4px 8px}
+.valid-main{display:flex;align-items:center;gap:8px;font-size:12px}
+.valid-sub{font-size:10px;margin:0}
+.valid-side{font-size:10px;text-align:left}
+.valid-side.right{text-align:right}
+.content{padding-top:8px}
+@media(max-width:1000px){.header-right .badge:not(:last-child){display:none}.validbar{grid-template-columns:1fr auto}.valid-side.right{display:none}.valid-main{flex-wrap:wrap;justify-content:flex-end;gap:2px 8px}}
+@media(max-width:600px){.header-right{display:none}.title h1{font-size:14px}.controls>.ctrl-group:first-child{flex-basis:100%}.timeline{min-width:110px}.validbar,body.mosaic-mode .validbar{grid-template-columns:1fr}.valid-main{justify-content:flex-start}.valid-side{text-align:left}}
 </style>
 </head>
 <body>
@@ -164,8 +190,15 @@ body.mosaic-mode .placeholder small{font-size:9px}
 
   <div class="controls">
     <div class="ctrl-group">
-      <label for="runSel" style="font-size:12px;color:var(--muted)">Run</label>
-      <select id="runSel" title="Base model cycle">
+      <span style="font-size:10px;color:var(--muted)">Run</span>
+      <div class="run-buttons" role="group" aria-label="Model run cycle">
+        <button type="button" data-cycle="auto" aria-pressed="true" title="Latest safely published cycle">Latest</button>
+        <button type="button" data-cycle="0" aria-pressed="false">00Z</button>
+        <button type="button" data-cycle="6" aria-pressed="false">06Z</button>
+        <button type="button" data-cycle="12" aria-pressed="false">12Z</button>
+        <button type="button" data-cycle="18" aria-pressed="false">18Z</button>
+      </div>
+      <select id="runSel" hidden aria-label="Base model cycle">
         <option value="auto">Latest safe</option>
         <option value="0">00Z</option>
         <option value="6">06Z</option>
@@ -446,6 +479,10 @@ body.mosaic-mode .placeholder small{font-size:9px}
 
   function render(){
     const cycle = selectedCycle();
+    document.querySelectorAll('[data-cycle]').forEach(button => {
+      button.setAttribute('aria-pressed', String(button.dataset.cycle === runSel.value));
+      button.title = button.dataset.cycle === 'auto' ? 'Latest safely published cycle' : `Latest safely published ${pad2(Number(button.dataset.cycle))}Z run`;
+    });
     const runDate = selectedRunDate();
     const lead = Number(slider.value);
     const validDate = new Date(runDate.getTime()+lead*3600000);
@@ -581,7 +618,15 @@ body.mosaic-mode .placeholder small{font-size:9px}
   playBtn.addEventListener('click',()=>timer?stopPlay():startPlay());
   speedSel.addEventListener('change',()=>{ if(timer) startPlay(); });
   slider.addEventListener('input',()=>{stopPlay();render();});
-  runSel.addEventListener('change',()=>{stopPlay();jumpToNow();});
+  runSel.addEventListener('change',()=>{stopPlay();render();});
+  document.querySelectorAll('[data-cycle]').forEach(button => {
+    button.addEventListener('click',()=>{
+      runSel.value = button.dataset.cycle;
+      cacheBust = Date.now();
+      stopPlay();
+      render();
+    });
+  });
   paramSel.addEventListener('change',()=>{stopPlay();render();});
   $('#nowBtn').addEventListener('click',()=>{stopPlay();jumpToNow();});
   $('#refreshBtn').addEventListener('click',()=>{cacheBust=Date.now();render();});
@@ -601,6 +646,7 @@ body.mosaic-mode .placeholder small{font-size:9px}
   imageLightbox.addEventListener('click',e=>{ if(e.target===imageLightbox) closeLightbox(); });
   document.addEventListener('keydown',e=>{
     if (e.key==='Escape' && imageLightbox.classList.contains('show')){e.preventDefault();closeLightbox();return}
+    if (['INPUT','SELECT','BUTTON'].includes(document.activeElement.tagName)) return;
     if (e.key==='ArrowLeft'){e.preventDefault();stopPlay();move(-1)}
     if (e.key==='ArrowRight'){e.preventDefault();stopPlay();move(1)}
     if (e.key===' ' && !['INPUT','SELECT','BUTTON'].includes(document.activeElement.tagName)){e.preventDefault();timer?stopPlay():startPlay()}
@@ -613,3 +659,4 @@ body.mosaic-mode .placeholder small{font-size:9px}
 </script>
 </body>
 </html>
+
