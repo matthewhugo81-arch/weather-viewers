@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Wetterzentrale Run-to-Run Model Viewer v19</title>
+<title>Wetterzentrale Run-to-Run Model Viewer v20</title>
 <style>
 :root{
   --bg:#071018;--panel:#0d1822;--panel2:#132330;--line:#294052;
@@ -71,7 +71,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 <header>
   <div class="brand">
     <h1>Wetterzentrale • Run-to-Run Viewer</h1>
-    <div class="sub">Live Wetterzentrale charts • check printed Init/Valid dates • v19 • auto-refresh 5 min</div>
+    <div class="sub">Live Wetterzentrale charts • check printed Init/Valid dates • v20 • auto-refresh 5 min</div>
   </div>
   <div class="toolbar">
     <div class="group"><span class="label">Mode</span><select id="compareMode">
@@ -139,7 +139,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 
 <aside id="drawer">
   <h2>How this viewer works</h2>
-  <div class="note">Charts load directly from Wetterzentrale, as in v9. Availability means the image loaded, <b>not that its printed dates were automatically verified</b>. The “Last checked run” date comes from a separate background reading of the source chart headers, fetched only after image loading finishes. It is advisory: live images can change after that check. Checks over two hours old are marked as aged, and missing dates remain unchecked. Always compare the Init and Valid dates printed on the charts: a cycle slot can still contain yesterday's run while today's output is publishing. Forecasts stop at <b>T+240</b>.</div>
+  <div class="note">Charts load directly from Wetterzentrale, as in v9. Availability means the image loaded, <b>not that its printed dates were automatically verified</b>. Run dates are not inferred from a separate background snapshot, because it can lag behind these live images. Always compare the Init and Valid dates printed on the charts: a cycle slot can still contain yesterday's run while today's output is publishing. Forecasts stop at <b>T+240</b>.</div>
   <h3>Runs and forecast hours</h3>
   <div class="note">UKMO EU: 00/12Z through T+168; 06/18Z through T+66. ICON: 00/12Z through T+180; 06/18Z through T+120. ECMWF: 00/12Z every 6 hours through T+144, then daily through T+240; 06/18Z through T+144. GFS, GFS ENS and AIFS: 6-hour steps through T+240. GEM: 00/12Z, 6-hour steps through T+240. EC ENS: 00/12Z, daily steps through T+240.</div>
   <h3>Comparison dates</h3>
@@ -170,33 +170,6 @@ const padRun=n=>String(n).padStart(2,'0'),padLead=n=>String(n).padStart(2,'0');
 const dateText=n=>new Date(n).toLocaleString('en-GB',{timeZone:'UTC',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})+' UTC';
 function toast(t){e.toast.textContent=t;e.toast.classList.add('show');setTimeout(()=>e.toast.classList.remove('show'),2200)}
 function status(t,type='warn'){e.statusText.textContent=t;e.statusDot.className='dot '+(type==='ok'?'ok':type==='bad'?'bad':'')}
-
-// Advisory dates only: never gate, replace or reload a source image.
-let dateIndex=null,dateCheckStarted=0,dateCheckBusy=false;
-function dateInfo(f){
- const checked=Date.parse(dateIndex?.checkedAt),c=dateIndex?.charts?.[filename(f.key,f.run,f.lead,+e.variable.value)];
- const init=Date.parse(c?.init),valid=Date.parse(c?.valid);
- if(!Number.isFinite(checked)||checked>Date.now()+60000||!Number.isFinite(init)||init>checked||new Date(init).getUTCHours()!==f.run||valid-init!==f.lead*HOUR||c?.method!=='printed-header-ocr')return {short:'Run date unchecked',text:'Run date unchecked • check printed Init/Valid dates'};
- const old=init<f.init,stale=Date.now()-checked>2*HOUR;
- const stamp=new Date(init).toLocaleString('en-GB',{timeZone:'UTC',day:'2-digit',month:'short'})+' '+padRun(f.run)+'Z';
- return {short:stamp+(stale?' · check aged':old?' · older at check':''),text:'Last checked run: '+dateText(init)+(old?' • older than requested at check':'')+' • checked '+dateText(checked)+(stale?' (check over 2 h old)':'')+' • live chart may have updated; printed dates take priority'};
-}
-function updateDateLabels(){
- const f=state.frames[state.idx];if(f?.ok===true){const d=dateInfo(f);e.sameValid.textContent=d.text;e.sameValid.title=d.text;}
- [...e.runBar.children].forEach((b,i)=>{const f=state.frames[i];if(f?.ok===true){const d=dateInfo(f);b.querySelector('.r2').textContent=d.short;b.title=d.text;}});
- [...panelView.children].forEach(tile=>{const f=state.frames[+tile.dataset.frame];if(f){const d=dateInfo(f);tile.querySelector('.panelNote').textContent=d.text;}});
-}
-async function refreshDateInfo(){
- if(dateCheckBusy||Date.now()-dateCheckStarted<REFRESH_MS)return;
- dateCheckBusy=true;dateCheckStarted=Date.now();
- try{
-  const response=await fetch('wetterzentrale/availability.json',{cache:'no-cache',signal:AbortSignal.timeout(8000),priority:'low'});
-  if(!response.ok)throw Error('Date check unavailable');
-  const data=await response.json();if(data.schema!==1||!data.charts)throw Error('Unknown date format');
-  dateIndex=data;updateDateLabels();
- }catch{/* Keep images and any previously checked dates; never retry image loads here. */}
- finally{dateCheckBusy=false;}
-}
 
 function cycleAge(ref,run){return (ref-run+24)%24}
 function nominalRun(run){const d=new Date();d.setUTCHours(run,0,0,0);if(+d>Date.now())d.setUTCDate(d.getUTCDate()-1);return +d}
@@ -262,8 +235,8 @@ function buildFrames(){
   if(u.length){e.empty.style.display='none';if(!e.singleImg.getAttribute('src')||state.frames[state.idx]?.ok!==true)showFrame(u[0]);}
   if(done===pending.length){
    if(!u.length){showEmpty();setEmptyText('Image loading failed','Wetterzentrale did not return a usable image. The run may still be publishing; use Reload to retry.');status('Image requests failed — use Reload to retry','bad');}
-   else{showFrame(all?state.idx:u[u.length-1]);status(`${u.length}/${state.frames.length} images loaded • dates checked separately`,'ok');}
-   void refreshDateInfo();
+   else{showFrame(all?state.idx:u[u.length-1]);status(`${u.length}/${state.frames.length} images loaded • check printed Init/Valid dates`,'ok');}
+   
   }
  });
 }
@@ -320,7 +293,7 @@ async function autoRefresh(){
    else if(usable().length)showFrame(usable().at(-1));
   }));
   if(gen===state.generation)status(`${usable().length}/${state.frames.length} images loaded • auto-refresh 5 min`,usable().length?'ok':'bad');
- }finally{refreshing=false;void refreshDateInfo();}
+ }finally{refreshing=false;}
 }
 setInterval(autoRefresh,15000);
 document.addEventListener('visibilitychange',autoRefresh);
@@ -333,15 +306,15 @@ function showFrame(i){
  const relation=f.sameLead&&f.age?`${ageText} • same T+; different valid time`:f.age?`${ageText} • targets same valid time`:'Selected cycle';
  e.sameValid.textContent=`Requested ${padRun(f.run)}Z • ${relation} • check printed Init/Valid dates`;
  e.frameLabel.textContent=`Chart ${usable().indexOf(i)+1} / ${usable().length}`;e.imageUrlLabel.textContent=filename(f.key,f.run,f.lead,+e.variable.value);
- [...e.runBar.children].forEach((b,k)=>b.classList.toggle('active',k===i));updatePanelDisplay();updateDateLabels();
+ [...e.runBar.children].forEach((b,k)=>b.classList.toggle('active',k===i));updatePanelDisplay();
 }
 function renderRunBar(){
  e.runBar.replaceChildren();state.frames.forEach((f,i)=>{
   const b=document.createElement('button');b.className='runBtn';b.disabled=f.ok!==true;
   const title=document.createElement('div');title.className='r1';title.textContent=e.compareMode.value==='allmodels'?f.model:`${padRun(f.run)}Z • T+${padLead(f.lead)}`;
-  const detail=document.createElement('div');detail.className='r2';detail.textContent=f.ok===true?(f.age===0?'selected run':f.age+' h earlier'):f.ok===null?'loading…':f.reason.startsWith('Required T+')?'cycle ends T+'+modelLeads(f.key,f.run).at(-1):f.reason.startsWith('Beyond')?'above T+240':'unavailable';
+  const detail=document.createElement('div');detail.className='r2';detail.textContent=f.ok===true?(f.age===0?'requested cycle':f.age+' h earlier'):f.ok===null?'loading…':f.reason.startsWith('Required T+')?'cycle ends T+'+modelLeads(f.key,f.run).at(-1):f.reason.startsWith('Beyond')?'above T+240':'unavailable';
   b.title=f.reason||`Requested cycle ${padRun(f.run)}Z, T+${f.lead}; check printed dates`;b.append(title,detail);b.onclick=()=>{stop();showFrame(i)};e.runBar.append(b);
- });renderPanels();updateDateLabels();
+ });renderPanels();
 }
 function step(delta){const u=usable();if(!u.length)return;let p=u.indexOf(state.idx);if(p<0)p=0;showFrame(u[(p+delta+u.length)%u.length])}
 function play(){const u=usable();if(state.playing||u.length<2)return;if(state.idx===u[u.length-1])showFrame(u[0]);state.dir=1;state.playing=true;e.play.textContent=e.speedPlay.textContent='❚❚';schedule(+e.speed.value)}
@@ -404,7 +377,7 @@ function renderPanels(){
   else{let message=chart.querySelector('.panelMessage');if(!message){message=document.createElement('div');message.className='panelMessage';chart.replaceChildren(message)}message.textContent=f.ok===null?'Loading source chart…':f.reason;}
  });
  const count=usable().length;panelView.style.setProperty('--columns',String(count<=3?Math.max(1,count):count<=4?2:Math.min(4,Math.ceil(count/2))));
- updatePanelDisplay();updateDateLabels();
+ updatePanelDisplay();
 }
 displayView.onchange=()=>{stop();panelExpanded=false;if(displayView.value==='panels')renderPanels();updatePanelDisplay();if(displayView.value==='single'){resetZoom();fit()}};
 backToPanels.onclick=()=>{stop();panelExpanded=false;updatePanelDisplay()};
