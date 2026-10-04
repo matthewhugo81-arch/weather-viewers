@@ -10,6 +10,7 @@ on:
       - 'ukmo-fax-archive/**'
       - '.github/workflows/ukmo-fax.yml'
       - 'Wetterzentrale_Model_Viewer.html'
+      - 'Satellite_Image_Viewer.html'
       - 'wetterzentrale/**'
 permissions:
   contents: write
