@@ -65,6 +65,8 @@ body.single-view .chart-controls .toolbar{position:static;padding-block:0;border
 @media(max-width:850px){.chart-controls .lead-shelf{flex-basis:100%}.chart-controls .toolbar{flex-basis:100%}}
 .chart-controls .lead-shelf{gap:4px}.chart-controls .lead-shelf button{min-width:48px;padding:7px 8px}
 .chart-controls .toolbar{flex-basis:900px;min-width:0}.chart-controls .toolbar #penHint{max-width:150px}
+/* Chart replacement keeps its geometry; do not anchor scrolling to removed chart nodes. */
+body.single-view{overflow-anchor:none}
 </style><script defer src="archive/manifest.js"></script><script defer src="pen.js?v=automatic-1"></script></head><body>
 <header><div><p class="eyebrow">NORTH ATLANTIC &amp; EUROPE · ALL TIMES UTC</p><h1>UKMO FAX <span>Run Archive &amp; Comparison</span></h1></div><div class="utc" id="updated"></div></header>
 <main><section class="controls"><label class="valid-label"><span id="selectionLabel">CHART A — LATEST AVAILABLE CHART</span><select id="valid" aria-label="Chart A chart"></select></label><p class="simple-rule"><strong>A = latest available for your selected chart</strong><br>B = an earlier forecast for A’s exact valid time</p><details class="source-settings"><summary>Source</summary><label>Chart source<select id="source"></select></label></details></section><div class="chart-controls"><nav id="leadShelf" class="lead-shelf" aria-label="Latest available chart leads"></nav>

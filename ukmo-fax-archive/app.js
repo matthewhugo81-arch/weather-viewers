@@ -112,13 +112,20 @@
   first.onload=check;second.onload=check;$('wipeCanvas').append(first,second,line);slider();check();
  }
  function render(){
+  // Reserve the outgoing chart geometry before replacing it: loading must not collapse the page.
+  const keepScroll=mode==='1'&&$('panels').classList.contains('single');
+  const scrollPosition={left:window.scrollX,top:window.scrollY};
+  const previousFrame=keepScroll?$('panels').querySelector('.image-wrap'):null;
+  const previousRatio=previousFrame&&previousFrame.clientHeight?previousFrame.clientWidth/previousFrame.clientHeight:null;
   document.body.classList.toggle('single-view',mode==='1');
   const entry=entries.find(e=>e.key===$('valid').value),a=entry?.a,older=entry?.older||[],g=a?[a,...older]:[];
   const b=older.find(c=>c.id===chosenB)||older[0];chosenB=b?.id||'';
   const n=mode==='1'?1:mode==='4'?4:2;const bi=g.indexOf(b);
   const selected=[a,b,...(bi>=0?g.slice(bi+1):[])];
-  $('panels').className='panels '+(n===1?'single':'');$('panels').replaceChildren();
-  for(let i=0;i<n;i++)$('panels').append(panel(selected[i],i,older));
+  const nextPanels=Array.from({length:n},(_,i)=>panel(selected[i],i,older));
+  const nextFrame=nextPanels[0].querySelector('.image-wrap');
+  if(previousRatio&&nextFrame){nextFrame.style.aspectRatio=String(previousRatio);nextFrame.style.minHeight='0';}
+  $('panels').className='panels '+(n===1?'single':'');$('panels').replaceChildren(...nextPanels);
   $('validTitle').textContent=a?`VALID ${fmt(a.valid_time)}`:'No saved charts';
   const period=$('valid');
   const timeline=entries.map(e=>e.key),position=timeline.indexOf(period.value);
@@ -129,6 +136,7 @@
   document.querySelectorAll('#leadShelf button').forEach(button=>button.setAttribute('aria-pressed',String(period.value===button.dataset.key)));
   $('wipeArea').hidden=mode!=='wipe';wipe(a,b);window.FaxPen?.sync(mode);preloadNearby();
   $('rows').replaceChildren();g.forEach(c=>{const tr=document.createElement('tr');[fmt(c.valid_time),fmt(c.issue_time),'T+'+c.lead_hours,names[c.source]||c.source,fmt(c.download_time)].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.append(td);});const td=document.createElement('td');td.append(original(c));tr.append(td);$('rows').append(tr);});
+  if(keepScroll)window.scrollTo({...scrollPosition,behavior:'instant'});
   const best=entries.find(e=>e.older.length);$('example').disabled=!best;$('exampleInfo').textContent=best?' '+short(best.a.valid_time):' No period has previous runs yet.';
  }
  $('source').add(new Option('Combined · latest available products',''));
