@@ -3,7 +3,7 @@
  const ceiling=240, order=['ecm','aifs','ecmens','gfs','gfsens','ukmo','gem','icon'];
  const models={
   gfs:{name:'GFS',prefix:'GFSOPEU',cycles:[0,6,12,18],max:240,vars:[1,2,34,21],page:'gfs',lid:'OP',lag:6},
-  gfsens:{name:'GFS ENS',prefix:'GFSAVGEU',cycles:[0,6,12,18],max:240,vars:[1,2,34],page:'gfs',lid:'AVG',lag:7},
+  gfsens:{name:'GFS ENS',prefix:'GFSAVGEU',cycles:[0,6,12,18],max:240,vars:[1,2,34],page:'gfs',lid:'AVG',lag:5},
   ecm:{name:'ECMWF',prefix:'ECMOPEU',cycles:[0,6,12,18],max:240,vars:[1,2,34,21],page:'ecm',lid:'OP',lag:8},
   aifs:{name:'AIFS',prefix:'AIFSOPEU',cycles:[0,6,12,18],max:240,vars:[1,2,34],page:'aifs',lid:'OP',lag:7},
   ecmens:{name:'EC ENS',prefix:'ECMAVGEU',cycles:[0,12],max:240,vars:[1,2,34],page:'ecm',lid:'AVG',leadStep:24,historySameLead:true,lag:8},

@@ -140,11 +140,11 @@ test('Revisiting a source slot refreshes its cache key after three minutes',()=>
 });
 
 
-test('Run history ends at the selected cycle rather than a newer clock-hour slot',()=>{
+test('History starts at the selected cycle when no newer publication is expected',()=>{
  class Clock extends Date{constructor(...a){super(...(a.length?a:['2026-10-03T16:00:00Z']))}static now(){return Date.parse('2026-10-03T16:00:00Z')}}
  const s=viewer(undefined,undefined,Clock);s.e.refRun.value='6';s.e.lead.value='144';s.buildFrames();
- assert.deepEqual(Array.from(s.state.frames,f=>f.run),[12,18,0,6]);
- assert.deepEqual(Array.from(s.state.frames,f=>f.lead),[162,156,150,144]);
+ assert.deepEqual(Array.from(s.state.frames,f=>f.run),[6,0,18,12]);
+ assert.deepEqual(Array.from(s.state.frames,f=>f.lead),[144,150,156,162]);
  assert(s.state.frames.every(f=>f.valid===s.state.frames[0].valid));s.cancelImageLoads();
 });
 test('Automatic refresh keeps the old image until replacement loads and preserves selection',async()=>{
@@ -160,13 +160,13 @@ test('Automatic refresh keeps the old image until replacement loads and preserve
  for(let i=8;i<images.length;i++)images[i].onerror();await failed;assert.equal(s.e.singleImg.src,fresh);
 });
 
- test('Evening 12Z selection starts on 12Z, with previous-day 18Z first',async()=>{
+ test('Evening 12Z selection starts on 12Z, with previous-day 18Z last',async()=>{
  class Clock extends Date{constructor(...a){super(...(a.length?a:['2026-10-03T19:00:00Z']))}static now(){return Date.parse('2026-10-03T19:00:00Z')}}
  const images=[];function MockImage(){images.push(this);this.naturalWidth=959;this.naturalHeight=741;}
  const s=viewer(MockImage,undefined,Clock);s.e.model.value='ecm';s.e.refRun.value='12';s.e.lead.value='96';s.buildFrames();
- assert.deepEqual(Array.from(s.state.frames,f=>f.run),[18,0,6,12]);
- assert.deepEqual(Array.from(s.state.frames,f=>f.lead),[114,108,102,96]);
- assert.equal(s.state.frames[0].init,Date.parse('2026-10-02T18:00:00Z'));
+ assert.deepEqual(Array.from(s.state.frames,f=>f.run),[12,6,0,18]);
+ assert.deepEqual(Array.from(s.state.frames,f=>f.lead),[96,102,108,114]);
+ assert.equal(s.state.frames[3].init,Date.parse('2026-10-02T18:00:00Z'));
  assert(s.state.frames.every(f=>f.valid===Date.parse('2026-10-07T12:00:00Z')));
  for(const im of images)im.onload();await new Promise(r=>setImmediate(r));
  assert.equal(s.state.frames[s.state.idx].run,12);assert.match(s.e.singleImg.src,/ECMOPEU12_96_1/);
@@ -199,4 +199,32 @@ test('Rain toggle preserves an earlier history frame and requests no rain until 
  for(const im of images.slice(count))im.onload();await new Promise(r=>setImmediate(r));
  assert.equal(s.state.frames[s.state.idx].run,old.run);assert.equal(s.state.frames[s.state.idx].lead,old.lead);
  assert.equal(s.e.refRun.value,'12');assert.equal(s.e.lead.value,'96');
+});
+
+test('GFS ENS screenshot regression: newer 12Z precedes 06Z, 00Z and previous-day 18Z',async()=>{
+ class Clock extends Date{constructor(...a){super(...(a.length?a:['2026-10-05T17:48:00Z']))}static now(){return Date.parse('2026-10-05T17:48:00Z')}}
+ const images=[];function Image(){images.push(this);this.naturalWidth=959;this.naturalHeight=741;}
+ const s=viewer(Image,undefined,Clock);s.e.model.value='gfsens';s.e.refRun.value='6';s.e.lead.value='216';s.buildFrames();
+ assert.deepEqual(Array.from(s.state.frames,f=>f.run),[12,6,0,18]);
+ assert.deepEqual(Array.from(s.state.frames,f=>f.lead),[210,216,222,228]);
+ assert(s.state.frames.every(f=>f.valid===Date.parse('2026-10-14T06:00:00Z')));
+ // Finish newest last: network completion order must not determine display order.
+ for(const im of images.slice().reverse())im.onload();await new Promise(r=>setImmediate(r));
+ assert.equal(s.state.idx,0);assert.match(s.e.singleImg.src,/GFSAVGEU12_210_1/);
+ s.reload(true);assert.equal(s.e.refRun.value,'12');s.cancelImageLoads();
+});
+
+test('All models and reference cycles stay newest first across UTC midnight and unsupported leads',()=>{
+ for(const iso of ['2026-10-05T02:00:00Z','2026-10-05T17:48:00Z']){
+  class Clock extends Date{constructor(...a){super(...(a.length?a:[iso]))}static now(){return Date.parse(iso)}}
+  const s=viewer(undefined,undefined,Clock);
+  for(const key of r.order)for(const run of r.models[key].cycles)for(const lead of [0,96,216,240]){
+   s.e.model.value=key;s.e.refRun.value=String(run);s.e.lead.value=String(lead);s.state.referenceInit=null;s.buildFrames();
+   const frames=s.state.frames;assert.equal(new Set(frames.map(f=>f.run)).size,frames.length);
+   for(let i=1;i<frames.length;i++)assert(frames[i-1].init>frames[i].init,`${iso} ${key} ${run}`);
+   assert(frames.filter(f=>f.url).every(f=>f.lead>=0&&f.lead<=240));
+   if(!r.models[key].historySameLead)assert(frames.every(f=>f.valid===frames[0].valid));
+   s.cancelImageLoads();
+  }
+ }
 });

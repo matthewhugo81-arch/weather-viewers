@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Wetterzentrale Run-to-Run Model Viewer v22</title>
+<title>Wetterzentrale Run-to-Run Model Viewer v23</title>
 <style>
 :root{
   --bg:#071018;--panel:#0d1822;--panel2:#132330;--line:#294052;
@@ -76,7 +76,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 <header>
   <div class="brand">
     <h1>Wetterzentrale • Run-to-Run Viewer</h1>
-    <div class="sub">Live Wetterzentrale charts • check printed Init/Valid dates • v22 • auto-refresh 5 min</div>
+    <div class="sub">Live Wetterzentrale charts • check printed Init/Valid dates • v23 • auto-refresh 5 min</div>
   </div>
   <div class="toolbar">
     <div class="group"><span class="label">Mode</span><select id="compareMode">
@@ -144,7 +144,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 <footer>
   <div class="controls"><button id="prev">◀</button><button id="play">▶</button><button id="next">▶</button></div>
   <div class="runBar" id="runBar"></div>
-  <div class="help">Play: oldest → newest • wheel: zoom • drag: pan • Space: play/pause • ←/→: charts • 0: reset</div>
+  <div class="help">Play: newest → oldest • wheel: zoom • drag: pan • Space: play/pause • ←/→: charts • 0: reset</div>
 </footer>
 </div>
 
@@ -154,7 +154,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
   <h3>Runs and forecast hours</h3>
   <div class="note">UKMO EU: 00/12Z through T+168; 06/18Z through T+66. ICON: 00/12Z through T+180; 06/18Z through T+120. ECMWF: 00/12Z every 6 hours through T+144, then daily through T+240; 06/18Z through T+144. GFS, GFS ENS and AIFS: 6-hour steps through T+240. GEM: 00/12Z, 6-hour steps through T+240. EC ENS: 00/12Z, daily steps through T+240.</div>
   <h3>Comparison dates</h3>
-  <div class="note">History is anchored to the selected run: earlier cycles are ordered oldest left, with the selected run last and opened by default. For a selected 12Z run, the order is the preceding 18Z, then 00Z, 06Z and 12Z. Forecast-hour offsets target the same valid time; publication can temporarily leave an older printed date in a slot. <b>EC ENS uses the same forecast lead</b>, so its earlier cycle targets an earlier valid time. These are requested comparisons; the printed chart dates are authoritative. Unsupported cycles, variables and forecast hours are excluded. Loaded panels appear together without empty gaps.</div>
+  <div class="note">History runs newest to oldest, left to right and then down, and opens on the newest usable cycle. The expected publication window advances with UTC time even when an earlier reference cycle is selected. For a latest 12Z run, the order is 12Z, 06Z, 00Z, then the preceding 18Z (where supplied). Publication timing is an estimate, not a reading of the image: a rolling source slot can update earlier or later. Forecast-hour offsets target the same valid time. <b>EC ENS uses the same forecast lead</b>, so its earlier cycle targets an earlier valid time. These are requested comparisons; the printed chart dates are authoritative. Unsupported cycles, variables and forecast hours are excluded. Loaded panels appear together without empty gaps.</div>
   <h3>Availability and reload</h3>
   <div class="note">The viewer does not wait for a GitHub availability index or copied images. Charts are reused briefly while navigating; after three minutes, revisiting a selection requests current source images. Visible charts refresh automatically every five minutes, keeping existing images visible until replacements load. Returning to the tab refreshes overdue charts. Reload forces fresh requests immediately. Wetterzentrale may publish a run progressively. An unavailable image can be retried with Reload.</div>
   <h3>Precipitation</h3>
@@ -166,7 +166,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 </aside>
 <div id="toast"></div>
 
-<script src="wetterzentrale/models.js?v=21"></script>
+<script src="wetterzentrale/models.js?v=23"></script>
 <script>
 (() => {
 'use strict';
@@ -212,12 +212,14 @@ function populateLeadOptions(){
  e.lead.value=String(leads.includes(current)?current:leads.reduce((a,b)=>Math.abs(b-current)<Math.abs(a-current)?b:a,leads[0]));
 }
 function chooseLatest(){
+ e.refRun.value=String(new Date(latestRunInit()).getUTCHours());
+ state.referenceInit=null;populateLeadOptions();
+}
+function latestRunInit(){
  const all=e.compareMode.value==='allmodels',m=MODELS[e.model.value];
  const cycles=all?[0,6,12,18]:m.cycles;
- const hour=new Date(Date.now()-(all?4:m.lag||4)*HOUR).getUTCHours();
- const available=cycles.filter(run=>run<=hour);
- e.refRun.value=String(available.length?Math.max(...available):Math.max(...cycles));
- state.referenceInit=null;populateLeadOptions();
+ const cutoff=Date.now()-(all?4:m.lag||4)*HOUR;
+ return Math.max(...cycles.map(run=>{const d=new Date(cutoff);d.setUTCHours(run,0,0,0);if(+d>cutoff)d.setUTCDate(d.getUTCDate()-1);return +d}));
 }
 function candidate(key,run,lead,init,age=0,sameLead=false){
  const m=MODELS[key],v=+e.variable.value,valid=init+lead*HOUR;
@@ -234,20 +236,25 @@ function candidate(key,run,lead,init,age=0,sameLead=false){
 function buildFrames(preferredKey=null,preferredRun=null){
  cancelImageLoads();stop();resetZoom();state.generation++;const gen=state.generation;
  const all=e.compareMode.value==='allmodels',run=+e.refRun.value,lead=+e.lead.value;
- const init=state.referenceInit!==null&&new Date(state.referenceInit).getUTCHours()===run?state.referenceInit:nominalRun(run);
+ let init=state.referenceInit!==null&&new Date(state.referenceInit).getUTCHours()===run?state.referenceInit:nominalRun(run);
  state.referenceInit=init;
  if(all)state.frames=MODEL_ORDER.map(key=>candidate(key,run,lead,init));
  else{
   const key=e.model.value,m=MODELS[key];
-  state.frames=m.cycles.map(r=>({run:r,age:cycleAge(run,r)})).sort((a,b)=>b.age-a.age)
+  // Rolling cycle URLs can already hold a newer run than the selected reference.
+  // Order the expected publication window, not clock hours or image load order.
+  state.windowInit=Math.max(latestRunInit(),init);
+  const newest=new Date(state.windowInit).getUTCHours(),referenceAge=cycleAge(newest,run);
+  init=state.windowInit-referenceAge*HOUR;state.referenceInit=init;
+  state.frames=m.cycles.map(r=>({run:r,age:cycleAge(newest,r)-referenceAge})).sort((a,b)=>a.age-b.age)
    .map(x=>candidate(key,x.run,m.historySameLead?lead:lead+x.age,init-x.age*HOUR,x.age,!!m.historySameLead));
  }
  const preferred=typeof preferredKey==='string'?state.frames.findIndex(f=>f.key===preferredKey&&(all||f.run===preferredRun)):-1;
- state.idx=preferred>=0?preferred:all?0:state.frames.length-1;e.singleImg.removeAttribute('src');e.frameLabel.textContent='';e.imageUrlLabel.textContent='';
+ state.idx=preferred>=0?preferred:0;e.singleImg.removeAttribute('src');e.frameLabel.textContent='';e.imageUrlLabel.textContent='';
  e.modelLabel.textContent=all?'All models':MODELS[e.model.value].name;e.varLabel.textContent=VARS[+e.variable.value];
  e.runLabel.textContent=`${padRun(run)}Z • T+${padLead(lead)}`;e.sameValid.textContent='Target valid: '+dateText(init+lead*HOUR)+' • check printed dates';
  e.empty.style.display='none';renderRunBar();updateRainToggle();
- const pending=state.frames.filter(f=>f.ok===null);if(!all)pending.reverse();
+ const pending=state.frames.filter(f=>f.ok===null);
  if(!pending.length){showEmpty();status('No maps supplied for this selection','bad');return}
  setEmptyText('Loading charts…','Live maps appear as soon as each image is ready.');e.empty.style.display=$('displayView').value==='panels'?'none':'flex';
  status(`Loading ${pending.length} source charts…`);
@@ -258,7 +265,7 @@ function buildFrames(preferredKey=null,preferredRun=null){
   if(u.length){e.empty.style.display='none';if(!e.singleImg.getAttribute('src')||state.frames[state.idx]?.ok!==true)showFrame(u[0]);}
   if(done===pending.length){
    if(!u.length){showEmpty();setEmptyText('Image loading failed','Wetterzentrale did not return a usable image. The run may still be publishing; use Reload to retry.');status('Image requests failed — use Reload to retry','bad');}
-   else{showFrame(preferred>=0&&state.frames[preferred].ok===true?preferred:all?state.idx:u[u.length-1]);status(`${u.length}/${state.frames.length} images loaded • check printed Init/Valid dates`,'ok');}
+   else{showFrame(preferred>=0&&state.frames[preferred].ok===true?preferred:all?state.idx:u[0]);status(`${u.length}/${state.frames.length} images loaded • check printed Init/Valid dates`,'ok');}
    
   }
  });
@@ -304,6 +311,7 @@ function reload(autoLatest=false){
 // Refresh in place: never blank a usable chart or interrupt navigation/playback.
 async function autoRefresh(){
  if(document.hidden||refreshing||Date.now()-lastRefresh<REFRESH_MS||state.frames.some(f=>f.ok===null))return;
+ if(e.compareMode.value!=='allmodels'&&latestRunInit()>state.windowInit){const f=state.frames[state.idx];lastRefresh=Date.now();buildFrames(f?.key,f?.run);return;}
  refreshing=true;lastRefresh=Date.now();imageEpoch=Math.max(Date.now(),imageEpoch+1);
  const gen=state.generation;
  try{
@@ -313,7 +321,7 @@ async function autoRefresh(){
    f.url=imageCache.get(url)?.image.src||url;f.ok=true;f.reason='';
    renderRunBar();
    if(state.frames[state.idx]?.ok===true)showFrame(state.idx);
-   else if(usable().length)showFrame(usable().at(-1));
+   else if(usable().length)showFrame(usable()[0]);
   }));
   if(gen===state.generation)status(`${usable().length}/${state.frames.length} images loaded • auto-refresh 5 min`,usable().length?'ok':'bad');
  }finally{refreshing=false;}
@@ -335,7 +343,7 @@ function renderRunBar(){
  e.runBar.replaceChildren();state.frames.forEach((f,i)=>{
   const b=document.createElement('button');b.className='runBtn';b.disabled=f.ok!==true;
   const title=document.createElement('div');title.className='r1';title.textContent=e.compareMode.value==='allmodels'?f.model:`${padRun(f.run)}Z • T+${padLead(f.lead)}`;
-  const detail=document.createElement('div');detail.className='r2';detail.textContent=f.ok===true?(f.age===0?'requested cycle':f.age+' h earlier'):f.ok===null?'loading…':f.reason.startsWith('Required T+')?'cycle ends T+'+modelLeads(f.key,f.run).at(-1):f.reason.startsWith('Beyond')?'above T+240':'unavailable';
+  const detail=document.createElement('div');detail.className='r2';detail.textContent=f.ok===true?(f.age===0?'requested cycle':Math.abs(f.age)+' h '+(f.age<0?'newer':'earlier')):f.ok===null?'loading…':f.reason.startsWith('Required T+')?'cycle ends T+'+modelLeads(f.key,f.run).at(-1):f.reason.startsWith('Beyond')?'above T+240':'unavailable';
   b.title=f.reason||`Requested cycle ${padRun(f.run)}Z, T+${f.lead}; check printed dates`;b.append(title,detail);b.onclick=()=>{stop();showFrame(i)};e.runBar.append(b);
  });renderPanels();
 }
@@ -346,8 +354,8 @@ function schedule(ms){clearTimeout(state.timer);if(state.playing)state.timer=set
 function tick(){
  const u=usable();if(!state.playing||u.length<2){stop();return}
  const pos=u.indexOf(state.idx),rock=e.animMode.value==='rock';let hold=0,next=pos;
- if(rock){if(pos>=u.length-1){state.dir=-1;hold=+e.hold.value}else if(pos<=0)state.dir=1;next=pos+state.dir}
- else{next=(pos+1)%u.length;if(pos===u.length-1)hold=+e.hold.value}
+ if(rock){if(pos>=u.length-1){state.dir=-1}else if(pos<=0){state.dir=1;hold=+e.hold.value}next=pos+state.dir}
+ else{next=(pos+1)%u.length;if(pos===0)hold=+e.hold.value}
  showFrame(u[next]);schedule(+e.speed.value+hold);
 }
 function openWz(){const f=state.frames[state.idx];if(!f)return;const m=MODELS[f.key];window.open(`https://wetterzentrale.de/en/topkarten.php?map=1&model=${m.page}&var=${e.variable.value}&time=${f.lead}&run=${padRun(f.run)}&lid=${m.lid}&h=0&tr=${m.leadStep||6}&mv=0#mapref`,'_blank','noopener')}
