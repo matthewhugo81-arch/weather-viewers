@@ -13,6 +13,7 @@ on:
       - 'UK_Model_Viewer.html'
       - 'Satellite_Image_Viewer.html'
       - 'wetterzentrale/**'
+      - 'satellite-overlays/**'
 permissions:
   contents: write
   pages: write
@@ -92,6 +93,36 @@ jobs:
             wetterzentrale/charts
             wetterzentrale/eng.traineddata
           key: wz-printed-dates-v1-${{ github.run_id }}
+      - name: Set up Python for satellite contours
+        uses: actions/setup-python@v5
+        continue-on-error: true
+        with:
+          python-version: '3.12'
+      - name: Restore ECMWF contour cache
+        uses: actions/cache/restore@v4
+        continue-on-error: true
+        with:
+          path: |
+            satellite-overlays/.cache
+            satellite-overlays/latest.json
+          key: satellite-ecmwf-v1-${{ github.run_id }}
+          restore-keys: satellite-ecmwf-v1-
+      - name: Refresh satellite ECMWF contours
+        id: satellite_contours
+        continue-on-error: true
+        timeout-minutes: 6
+        run: |
+          python -m pip install --disable-pip-version-check -r satellite-overlays/requirements.txt
+          python satellite-overlays/generate.py
+      - name: Save ECMWF contour cache
+        if: steps.satellite_contours.outcome == 'success'
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: |
+            satellite-overlays/.cache
+            satellite-overlays/latest.json
+          key: satellite-ecmwf-v1-${{ github.run_id }}
       - name: Check existing publishing configuration
         id: pages
         env:
@@ -119,7 +150,7 @@ jobs:
           }
           NODE
           mkdir -p _site
-          rsync -a --exclude='.git/' --exclude='.github/' --exclude='node_modules/' --exclude='_site/' --exclude='*.traineddata*' ./ _site/
+          rsync -a --exclude='.git/' --exclude='.github/' --exclude='node_modules/' --exclude='_site/' --exclude='*.traineddata*' --exclude='.cache/' ./ _site/
       - uses: actions/upload-pages-artifact@v3
         if: steps.pages.outputs.mode == 'workflow'
         with:
