@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-11T07:07:41Z",
+  "updated_at": "2026-10-11T07:58:04Z",
   "pending": [],
   "charts": [
     {
@@ -1214,23 +1214,6 @@
       "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)"
     },
     {
-      "id": "vedur:PPVA89_EGRR_0600:a93b0b5f0bf4c68c4ce110cb661f1a32f0a5e972dfdeaebf9d39934eb7d1c229",
-      "width": 900,
-      "height": 608,
-      "sha256": "a93b0b5f0bf4c68c4ce110cb661f1a32f0a5e972dfdeaebf9d39934eb7d1c229",
-      "source": "vedur",
-      "product": "PPVA89_EGRR_0600",
-      "filename": "archive/objects/vedur/a93b0b5f0bf4c68c4ce110cb661f1a32f0a5e972dfdeaebf9d39934eb7d1c229.png",
-      "issue_time": "2026-10-10T06:00:00Z",
-      "lead_hours": 0,
-      "ocr_header": "Analysis chart valid 06 UTC SAT 10 OCT 2026",
-      "source_url": "https://brunnur.vedur.is/flugkort/PPVA89_EGRR_0600.png",
-      "valid_time": "2026-10-10T06:00:00Z",
-      "download_time": "2026-10-10T07:10:03Z",
-      "metadata_method": "printed-header-ocr",
-      "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)"
-    },
-    {
       "id": "metbrief-nowster:UKCpf048:f10dc0fba437bedb804e7ffe8fecb4a3e59945a3561a6b80b23111dd21a270c4",
       "width": 1076,
       "height": 864,
@@ -1482,6 +1465,40 @@
       "source_url": "https://brunnur.vedur.is/flugkort/PPVE89_EGRR_0600.png",
       "valid_time": "2026-10-11T06:00:00Z",
       "download_time": "2026-10-10T10:25:03Z",
+      "metadata_method": "printed-header-ocr",
+      "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)"
+    },
+    {
+      "id": "metbrief-nowster:UKCpf000:6d08d5c0b1512c56efe02a273771200cbbf648d68c3f62150a5a14be8b5f7ce5",
+      "width": 1179,
+      "height": 864,
+      "sha256": "6d08d5c0b1512c56efe02a273771200cbbf648d68c3f62150a5a14be8b5f7ce5",
+      "source": "metbrief-nowster",
+      "product": "UKCpf000",
+      "filename": "archive/objects/metbrief-nowster/6d08d5c0b1512c56efe02a273771200cbbf648d68c3f62150a5a14be8b5f7ce5.png",
+      "issue_time": "2026-10-11T06:00:00Z",
+      "lead_hours": 0,
+      "ocr_header": "Analysis chart valid 06 UTC SUN 11 OCT 2026",
+      "source_url": "https://bethyngalw.nowster.me.uk/charts/UKCpf000.png",
+      "valid_time": "2026-10-11T06:00:00Z",
+      "download_time": "2026-10-11T07:30:02Z",
+      "metadata_method": "printed-header-ocr",
+      "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)"
+    },
+    {
+      "id": "vedur:PPVA89_EGRR_0600:dc6110bf5e443cc18ba094b076aed8a40cd69fda6bce4f5ada2a7fc06853959d",
+      "width": 900,
+      "height": 608,
+      "sha256": "dc6110bf5e443cc18ba094b076aed8a40cd69fda6bce4f5ada2a7fc06853959d",
+      "source": "vedur",
+      "product": "PPVA89_EGRR_0600",
+      "filename": "archive/objects/vedur/dc6110bf5e443cc18ba094b076aed8a40cd69fda6bce4f5ada2a7fc06853959d.png",
+      "issue_time": "2026-10-11T06:00:00Z",
+      "lead_hours": 0,
+      "ocr_header": "Analysis chart valid 06 UTC SUN 11 OCT 2026",
+      "source_url": "https://brunnur.vedur.is/flugkort/PPVA89_EGRR_0600.png",
+      "valid_time": "2026-10-11T06:00:00Z",
+      "download_time": "2026-10-11T07:25:03Z",
       "metadata_method": "printed-header-ocr",
       "issue_time_basis": "valid_time minus lead_hours (nominal run, not publication time)"
     },
@@ -1963,17 +1980,17 @@
     }
   ],
   "collection_status": {
-    "checked_at": "2026-10-11T07:07:41Z",
+    "checked_at": "2026-10-11T07:58:04Z",
     "products": 17,
     "download_failures": 0,
     "pending": 0,
     "errors": []
   },
-  "last_successful_collection": "2026-10-11T07:07:41Z",
+  "last_successful_collection": "2026-10-11T07:58:04Z",
   "retention": {
     "runs_per_valid_time": 4,
     "past_valid_days": 7,
     "preferred_source": "metbrief-nowster",
-    "applied_at": "2026-10-11T07:07:41.380Z"
+    "applied_at": "2026-10-11T07:58:05.083Z"
   }
 }
