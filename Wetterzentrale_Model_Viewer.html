@@ -26,7 +26,7 @@ main{position:relative;min-height:0;background:#020609;overflow:hidden}
 #singleView{position:absolute;inset:0 0 30px;display:flex;align-items:center;justify-content:center;overflow:hidden}
 #singleStage{position:absolute;left:0;top:0;transform-origin:center center;will-change:transform}
 #singleImg:not([src]){visibility:hidden}
-#singleImg{display:block;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;pointer-events:none}
+#singleImg{display:block;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none}
 
 
 
@@ -166,7 +166,7 @@ footer{height:56px;border-top:1px solid var(--line);background:#0c151e;display:g
 
 <main id="viewer">
   <div id="singleView">
-    <div id="singleStage"><img id="singleImg" alt="Wetterzentrale model chart"></div>
+    <div id="singleStage"><img id="singleImg" alt="Wetterzentrale model chart" draggable="false"></div>
   </div>
 
   <div id="singleFoot"><span id="frameLabel">Run 1 / 4</span><span id="imageUrlLabel"></span></div>
