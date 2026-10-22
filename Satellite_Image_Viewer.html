@@ -27,6 +27,7 @@ body.controls-collapsed header{display:flex;justify-content:space-between;align-
   <label class="field"><span>Archive length</span><select id="hours"><option value="2">2 hours</option><option value="4">4 hours</option><option value="6" selected>6 hours</option><option value="12">12 hours</option><option value="24">24 hours</option></select></label>
   <div class="presets"><span class="small-label">Quick compare</span><button data-preset="irwv">IR / WV</button><button data-preset="visir">VIS / IR</button><button data-preset="radarir">UK radar / IR</button><button id="swap" title="Swap the two selected products">⇄ Swap</button></div>
  </div>
+ <p class="sub" id="productAvailability" aria-live="polite"></p>
 </header>
 <div class="statusline"><p id="status" role="status" aria-live="polite">Loading imagery…</p><p id="notice">Matching archive frames by nominal UTC timestamp.</p></div>
 <main id="viewports">
@@ -63,7 +64,7 @@ const $=id=>document.getElementById(id);
 const byId=Object.fromEntries(PRODUCTS.map(p=>[p.id,p]));
 const fields=['region','layout','kind','hours','product0','product1','direction','speed','hold','lag','auto','concurrency','resolution','west','east','south','north'];
 const areas={uk:{label:'UK & Ireland',bounds:[-15,5,48,62]},eu:{label:'Western Europe',bounds:[-25,45,30,72]},alt:{label:'North Atlantic',bounds:[-70,25,25,72]}};
-const state={generation:0,display:0,frames:[],index:0,playing:false,timer:null,rock:1,loading:false,lastRefresh:0,active:0,cache:new Map(),pending:new Set(),views:[{zoom:1,x:0,y:0},{zoom:1,x:0,y:0}],logs:[]};
+const state={generation:0,display:0,frames:[],index:0,playing:false,timer:null,rock:1,loading:false,lastRefresh:0,active:0,productsByRegion:{},region:null,cache:new Map(),pending:new Set(),views:[{zoom:1,x:0,y:0},{zoom:1,x:0,y:0}],logs:[]};
 const selected=()=>[$('product0').value,...($('layout').value==='compare'?[$('product1').value]:[])].map(id=>byId[id]);
 const regionData=p=>p.regions[$('region').value];
 const isArchive=()=>$('kind').value==='archive';
@@ -72,21 +73,25 @@ const utc=d=>`${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
 const fullUTC=d=>`${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'UTC'})} · ${utc(d)}`;
 function status(message,tone=''){ $('status').textContent=message;$('status').className=tone; }
 function log(message){state.logs.push(message);if(state.logs.length>80)state.logs.shift();$('diagnostics').textContent=state.logs.join('\n');}
-function save(){try{localStorage.setItem('satelliteViewerV2',JSON.stringify({...Object.fromEntries(fields.map(k=>[k,$(k).value])),coasts:$('coasts').checked,linkZoom:$('linkZoom').checked}));}catch{}}
+function rememberProducts(){if(state.region)state.productsByRegion[state.region]=[$('product0').value,$('product1').value];}
+function save(){rememberProducts();try{localStorage.setItem('satelliteViewerV2',JSON.stringify({...Object.fromEntries(fields.map(k=>[k,$(k).value])),productsByRegion:state.productsByRegion,coasts:$('coasts').checked,linkZoom:$('linkZoom').checked}));}catch{}}
 function fillProducts(preferred=['irbw','wv63']){
+ const region=$('region').value,list=PRODUCTS.filter(p=>p.regions[region]);state.region=region;
  for(let i=0;i<2;i++){
   const select=$('product'+i);select.replaceChildren();let group;
-  for(const p of PRODUCTS.filter(p=>p.regions[$('region').value])){
+  for(const p of list){
    if(!group||group.label!==p.group){group=document.createElement('optgroup');group.label=p.group;select.append(group);}
    group.append(new Option(p.label,p.id));
   }
   select.value=preferred[i];if(!select.value)select.value=i===0?'irbw':'wv63';
  }
+ $('productAvailability').textContent=`${list.length} products available for ${areas[region].label}. `+(region==='uk'?'Full catalogue; choices are remembered for each area.':region==='eu'?'Choose UK & Ireland for MODIS, VIIRS and UK radar.':'Choose UK & Ireland for the full catalogue, including MSG RGB, lightning, MODIS, VIIRS and radar.');
 }
 function restore(){
  let saved={};try{saved=JSON.parse(localStorage.getItem('satelliteViewerV2')||'{}');}catch{}
  for(const key of fields.filter(x=>!x.startsWith('product'))){const el=$(key);if(saved[key]!==undefined){const old=el.value;el.value=String(saved[key]);if(!el.value)el.value=old;}}
- fillProducts([saved.product0||'irbw',saved.product1||'wv63']);
+ if(saved.productsByRegion&&typeof saved.productsByRegion==='object')for(const region of Object.keys(areas)){const ids=saved.productsByRegion[region];if(Array.isArray(ids)&&ids.length===2)state.productsByRegion[region]=ids;}
+ fillProducts(state.productsByRegion[$('region').value]||[saved.product0||'irbw',saved.product1||'wv63']);
  for(const k of ['coasts','linkZoom'])if(typeof saved[k]==='boolean')$(k).checked=saved[k];
  if(!validBounds())setBounds();
 }
@@ -120,13 +125,16 @@ function wmsURL(p,time){
 }
 function archiveURL(p,d){if(p.layer)return wmsURL(p,d);return `https://modeles20.meteociel.fr/satellite/archives/${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}/${regionData(p).archive}-${pad(d.getUTCHours())}-${pad(d.getUTCMinutes())}.png`;}
 function liveURL(p,token){const r=regionData(p),url=p.layer?wmsURL(p,null):$('kind').value==='gif'?r.gif:(r.latest||r.gif);return url+(url.includes('?')?'&':'?')+'refresh='+token;}
-function loadImage(url,gen,cache=true){
+function loadImage(url,gen,cache=true,onSlow){
+ if(gen!==state.generation)return Promise.resolve(false);
  if(cache&&state.cache.has(url))return Promise.resolve(state.cache.get(url));
  return new Promise(resolve=>{
   const im=new Image();let settled=false;
-  const finish=(ok,cancelled=false)=>{if(settled)return;settled=true;clearTimeout(timer);state.pending.delete(cancel);im.onload=null;im.onerror=null;if(cache&&!cancelled&&gen===state.generation){state.cache.set(url,ok);while(state.cache.size>700)state.cache.delete(state.cache.keys().next().value);}resolve(ok);};
+  const finish=(ok,cancelled=false)=>{if(settled)return;settled=true;clearTimeout(timer);clearTimeout(slowTimer);state.pending.delete(cancel);im.onload=null;im.onerror=null;if(cache&&!cancelled&&gen===state.generation){state.cache.set(url,ok);while(state.cache.size>700)state.cache.delete(state.cache.keys().next().value);}resolve(ok);};
   const cancel=()=>{finish(false,true);im.src='';};
-  const timer=setTimeout(()=>{finish(false);im.src='';},12000);
+  const timeoutMs=new URL(url,location.href).hostname==='view.eumetsat.int'?45000:12000;
+  const slowTimer=onSlow?setTimeout(()=>{if(gen===state.generation&&!settled)onSlow();},10000):null;
+  const timer=setTimeout(()=>{finish(false);im.src='';},timeoutMs);
   state.pending.add(cancel);im.onload=()=>finish(im.naturalWidth>150&&im.naturalHeight>150);im.onerror=()=>finish(false);im.src=url;
  });
 }
@@ -211,8 +219,14 @@ async function loadArchive(gen,products){
 }
 async function loadLive(gen,products){
  let loaded=0;await Promise.all(products.map(async(p,i)=>{
-  const url=liveURL(p,state.lastRefresh),ok=await loadImage(url,gen,false);if(gen!==state.generation)return;
-  if(ok){$('image'+i).src=url;$('empty'+i).hidden=true;loaded++;$('stamp'+i).textContent=($('kind').value==='gif'||(!regionData(p).latest&&!p.layer))?'Source animation · see image time':'Latest available · see image time';}
+  let url=liveURL(p,state.lastRefresh),ok=false;
+  for(let attempt=0;attempt<(p.layer?2:1);attempt++){
+   if(gen!==state.generation)return;
+   if(attempt){url=liveURL(p,state.lastRefresh+'-retry');empty(i,'Retrying EUMETView once…');$('stamp'+i).textContent='Retrying';}
+   ok=await loadImage(url,gen,false,()=>{empty(i,p.layer?'EUMETView is still loading… allowing up to 45 seconds per attempt.':'The source is still loading…');$('stamp'+i).textContent='Still loading';});
+   if(gen!==state.generation)return;if(ok)break;
+  }
+  if(ok){$('image'+i).src=url;$('empty'+i).hidden=true;loaded++;$('stamp'+i).textContent=p.group==='Polar-orbiting satellites'?'Latest overpass · check printed date':($('kind').value==='gif'||(!regionData(p).latest&&!p.layer))?'Source animation · see image time':'Latest available · see image time';}
   else{empty(i,'This feed did not load. Retry with Refresh or open the Source link.');$('stamp'+i).textContent='Unavailable';}
   log(`${p.label}: ${ok?'loaded':'unavailable'} — ${url.split('?')[0]}`);
  }));
@@ -231,7 +245,7 @@ function reload(){
   empty(i,isArchive()?'Loading recent archive frames first…':'Loading source imagery…');$('stamp'+i).textContent='—';
   $('image'+i).alt=`${p.label} — ${areas[$('region').value].label}`;$('source'+i).href=sourceURL(p);
   $('focusLabel'+i).textContent=p.label+' · '+areas[$('region').value].label;
-  $('note'+i).textContent=p.group+' · '+p.note+(p.id==='msgcolour'&&$('region').value==='uk'?' UK colour IR is available as a source animation; the upstream still-image page points to Europe.':'');coasts(i);
+  $('note'+i).textContent=p.group+' · '+p.note+(p.group==='Polar-orbiting satellites'?' This may be from an earlier day; refresh time is not observation time.':'')+(p.id==='msgcolour'&&$('region').value==='uk'?' UK colour IR is available as a source animation; the upstream still-image page points to Europe.':'');coasts(i);
  });
  resetZoom();controls();status('Loading '+areas[$('region').value].label+' imagery…');sizeViewports();
  $('refreshed').textContent='Last request: '+utc(new Date(state.lastRefresh))+'.';
@@ -273,11 +287,11 @@ function bind(){
  }
  new ResizeObserver(()=>[0,1].forEach(fit)).observe($('viewports'));
  const layoutObserver=new ResizeObserver(sizeViewports);for(const selector of ['header','footer','.credits','.statusline'])layoutObserver.observe(document.querySelector(selector));window.addEventListener('resize',sizeViewports);
- $('region').onchange=()=>{const ids=[$('product0').value,$('product1').value];fillProducts(ids);setBounds();reload();};
+ $('region').onchange=()=>{rememberProducts();const ids=state.productsByRegion[$('region').value]||[$('product0').value,$('product1').value];fillProducts(ids);setBounds();reload();};
  for(const id of ['layout','kind','hours'])$(id).onchange=reload;
  $('swap').onclick=()=>{const a=$('product0').value;$('product0').value=$('product1').value;$('product1').value=a;reload();};
  document.querySelectorAll('[data-preset]').forEach(btn=>btn.onclick=()=>{
-  const preset=btn.dataset.preset;if(preset==='radarir'&&$('region').value!=='uk'){$('region').value='uk';fillProducts();setBounds();}
+  const preset=btn.dataset.preset;if(preset==='radarir'&&$('region').value!=='uk'){rememberProducts();$('region').value='uk';fillProducts();setBounds();}
   const pair=preset==='irwv'?['irbw','wv63']:preset==='visir'?['viscomp','irbw']:['radar','irbw'];pair.forEach((v,i)=>$('product'+i).value=v);$('layout').value='compare';$('kind').value=preset==='radarir'?'gif':'archive';reload();
  });
  $('refresh').onclick=reload;$('play').onclick=()=>state.playing?stop():play();
