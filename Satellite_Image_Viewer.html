@@ -222,8 +222,8 @@ async function loadLive(gen,products){
   let url=liveURL(p,state.lastRefresh),ok=false;
   for(let attempt=0;attempt<(p.layer?2:1);attempt++){
    if(gen!==state.generation)return;
-   if(attempt){url=liveURL(p,state.lastRefresh+'-retry');empty(i,'Retrying EUMETView once…');$('stamp'+i).textContent='Retrying';}
-   ok=await loadImage(url,gen,false,()=>{empty(i,p.layer?'EUMETView is still loading… allowing up to 45 seconds per attempt.':'The source is still loading…');$('stamp'+i).textContent='Still loading';});
+   if(attempt){url=liveURL(p,state.lastRefresh+'-retry');$('empty'+i).textContent='Retrying EUMETView once…';$('stamp'+i).textContent='Retrying';}
+   ok=await loadImage(url,gen,false,()=>{$('empty'+i).textContent=p.layer?'EUMETView is still loading… allowing up to 45 seconds per attempt.':'The source is still loading…';$('stamp'+i).textContent='Still loading';});
    if(gen!==state.generation)return;if(ok)break;
   }
   if(ok){$('image'+i).src=url;$('empty'+i).hidden=true;loaded++;$('stamp'+i).textContent=p.group==='Polar-orbiting satellites'?'Latest overpass · check printed date':($('kind').value==='gif'||(!regionData(p).latest&&!p.layer))?'Source animation · see image time':'Latest available · see image time';}
